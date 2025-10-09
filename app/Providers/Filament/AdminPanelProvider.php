@@ -24,7 +24,6 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->defaultLocale('el')
             ->default()
             ->id('admin')
             ->path('admin')
