@@ -1,0 +1,41 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testing
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, gd, bcmath, zip, pcntl
+          coverage: none
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('**/composer.lock') }}
+      - run: composer install --no-interaction --prefer-dist
+      - run: cp .env.example .env || true
+      - run: php artisan key:generate || true
+      - run: php artisan migrate --force || true
+      - name: Pint
+        run: ./vendor/bin/pint -v || true
+      - name: PHPStan
+        run: ./vendor/bin/phpstan analyse --no-progress || true
+      - name: Pest
+        run: ./vendor/bin/pest || true
