@@ -2,18 +2,19 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * Run the database seeders.
      */
     public function run(): void
     {
+        // 1️⃣ Ρόλοι & δικαιώματα (πλήρες σετάρισμα)
+        $this->call(AuthSeeder::class);
+
+        // 2️⃣ Αρχικός διαχειριστής (admin user)
         $this->call(AdminUserSeeder::class);
     }
 }

@@ -6,25 +6,35 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 
 class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Δημιουργία ρόλου Administrator
-        $role = Role::firstOrCreate(['name' => 'Administrator']);
-
-        // Δημιουργία permission wildcard (προαιρετικά, αν θέλεις «τα πάντα»)
-        Permission::firstOrCreate(['name' => '*']);
-        $role->givePermissionTo('*');
-
-        // Δημιουργία admin χρήστη
+        // Αν υπάρχει ήδη admin user, τον ενημερώνει
         $admin = User::firstOrCreate(
-            ['email' => 'admin@example.com'],
-            ['name' => 'Administrator', 'password' => Hash::make('password')]
+            ['email' => 'admin@cence.test'],
+            [
+                'name' => 'System Administrator',
+                'password' => Hash::make('password'), // άλλαξέ το αργότερα!
+                'status' => 'active',
+                'force_password_reset' => true,
+            ]
         );
 
-        $admin->assignRole('Administrator');
+        // Ανάθεση ρόλου Administrator
+        $role = Role::where('name', 'Administrator')->first();
+        if ($role && !$admin->hasRole($role->name)) {
+            $admin->assignRole($role);
+        }
+
+        // Προαιρετικά, ενημέρωση audit fields
+        if (method_exists($admin, 'saveQuietly')) {
+            $admin->saveQuietly();
+        } else {
+            $admin->save();
+        }
+
+        $this->command->info('✅ Administrator user created or updated.');
     }
 }

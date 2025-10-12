@@ -10,30 +10,32 @@ class UserPolicy
     use HandlesAuthorization;
 
     /**
-     * Προτεραιότητα: αν είναι Super Admin, έχει όλα τα δικαιώματα.
+     * Δίνουμε πάντα full access στους Administrators.
      */
-    public function before(User $user, $ability)
+    public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('Administrator')) {
-            return true;
-        }
+        return $user->hasRole('Administrator') ? true : null;
     }
 
     /**
-     * Εμφάνιση όλων των χρηστών.
+     * Εμφάνιση λίστας χρηστών.
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('users.viewAny');
+        return $user->can('view_any_user') || $user->can('manage_users');
     }
 
     /**
      * Προβολή συγκεκριμένου χρήστη.
      */
-    public function view(User $user, User $model): bool
+    public function view(User $user, User $target): bool
     {
-        // Επιτρέπει να βλέπει τον εαυτό του ή αν έχει δικαίωμα.
-        return $user->id === $model->id || $user->can('users.view');
+        // Δεν επιτρέπεται να βλέπει άλλον Admin αν δεν είναι Admin
+        if ($target->hasRole('Administrator') && !$user->hasRole('Administrator')) {
+            return false;
+        }
+
+        return $user->can('view_user') || $user->can('manage_users');
     }
 
     /**
@@ -41,44 +43,69 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('users.create');
+        return $user->can('create_user') || $user->can('manage_users');
     }
 
     /**
-     * Ενημέρωση στοιχείων χρήστη.
+     * Επεξεργασία υπάρχοντος χρήστη.
      */
-    public function update(User $user, User $model): bool
+    public function update(User $user, User $target): bool
     {
-        // Επιτρέπει ενημέρωση του εαυτού του ή αν έχει δικαίωμα.
-        return $user->id === $model->id || $user->can('users.update');
-    }
-
-    /**
-     * Διαγραφή χρήστη.
-     */
-    public function delete(User $user, User $model): bool
-    {
-        // Δεν μπορεί να διαγράψει τον εαυτό του.
-        if ($user->id === $model->id) {
+        // Κανόνας ασφαλείας: non-admin δεν επεξεργάζεται Admin
+        if ($target->hasRole('Administrator') && !$user->hasRole('Administrator')) {
             return false;
         }
 
-        return $user->can('users.delete');
+        return $user->can('update_user') || $user->can('manage_users');
     }
 
     /**
-     * Επαναφορά (soft deleted).
+     * Διαγραφή (soft delete) χρήστη.
      */
-    public function restore(User $user, User $model): bool
+    public function delete(User $user, User $target): bool
     {
-        return $user->can('users.restore');
+        // Δεν επιτρέπεται διαγραφή Admin
+        if ($target->hasRole('Administrator')) {
+            return false;
+        }
+
+        return $user->can('delete_user') || $user->can('manage_users');
+    }
+
+    /**
+     * Επαναφορά (restore) χρήστη.
+     */
+    public function restore(User $user, User $target): bool
+    {
+        return $user->can('restore_user') || $user->can('manage_users');
     }
 
     /**
      * Οριστική διαγραφή (force delete).
      */
-    public function forceDelete(User $user, User $model): bool
+    public function forceDelete(User $user, User $target): bool
     {
-        return $user->can('users.forceDelete');
+        // Κανένας, εκτός Admin
+        if (!$user->hasRole('Administrator')) {
+            return false;
+        }
+
+        return $user->can('force_delete_user') || $user->can('manage_users');
+    }
+
+    /**
+     * Εισαγωγή (import) χρηστών.
+     */
+    public function import(User $user): bool
+    {
+        return $user->can('import_user') || $user->can('manage_users');
+    }
+
+    /**
+     * Εξαγωγή (export) χρηστών.
+     */
+    public function export(User $user): bool
+    {
+        return $user->can('export_user') || $user->can('manage_users');
     }
 }

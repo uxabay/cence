@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Facades\Auth;
 
 class User extends Authenticatable
 {
@@ -53,6 +54,7 @@ class User extends Authenticatable
         'last_activity_at' => 'datetime',
         'force_password_reset' => 'boolean',
         'deleted_at' => 'datetime',
+        'status' => \App\Enums\UserStatus::class,
     ];
 
     /**
@@ -64,6 +66,21 @@ class User extends Authenticatable
             ->logAll()
             ->useLogName('user')
             ->dontSubmitEmptyLogs();
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function ($user) {
+            if (Auth::hasUser()) {
+                // Αν είναι νέο record
+                if (! $user->exists) {
+                    $user->created_by = Auth::id();
+                }
+
+                // Πάντα ενημερώνεται το updated_by
+                $user->updated_by = Auth::id();
+            }
+        });
     }
 
     /**

@@ -7,7 +7,7 @@ use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\Schemas\UserForm;
-use App\Filament\Resources\Users\Schemas\UserInfolist;
+use App\Filament\Resources\Users\Schemas\UserInfo;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Filament\Support\NavigationGroupsNames;
 use App\Models\User;
@@ -27,7 +27,7 @@ class UserResource extends Resource
     protected static ?string $pluralModelLabel = 'Χρήστες';
     protected static ?string $navigationLabel = 'Διαχείριση Χρήστών';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static string|UnitEnum|null $navigationGroup = NavigationGroupsNames::SYSTEM;
 
@@ -40,7 +40,7 @@ class UserResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return UserInfolist::configure($schema);
+        return UserInfo::configure($schema);
     }
 
     public static function table(Table $table): Table
