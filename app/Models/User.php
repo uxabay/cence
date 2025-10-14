@@ -64,7 +64,7 @@ class User extends Authenticatable
     {
         return LogOptions::defaults()
             ->logAll()
-            ->useLogName('user')
+            ->useLogName('system.user')
             ->dontSubmitEmptyLogs();
     }
 

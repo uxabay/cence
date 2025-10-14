@@ -2,11 +2,14 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\NavigationGroupsNames;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -32,11 +35,29 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
 
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label(NavigationGroupsNames::CONTRACTS->getLabel())
+                    ->icon('heroicon-o-briefcase'),
+
+                NavigationGroup::make()
+                    ->label(NavigationGroupsNames::LABORATORY->getLabel())
+                    ->icon('heroicon-o-beaker'),
+
+                NavigationGroup::make()
+                    ->label(NavigationGroupsNames::SYSTEM->getLabel())
+                    ->icon('heroicon-o-cog'),
+
+                NavigationGroup::make()
+                    ->label(NavigationGroupsNames::REPORTS->getLabel())
+                    ->icon('heroicon-o-chart-bar'),
+            ])
+
             ->colors([
                 'primary' => '#2563eb',
             ])
 
-            ->spa()
+            ->spa(hasPrefetching: true)
 
             ->databaseNotifications()
 
@@ -68,6 +89,29 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+
+            ->plugins([
+                FilamentShieldPlugin::make()
+                    ->gridColumns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 2
+                    ])
+                    ->sectionColumnSpan(1)
+                    ->checkboxListColumns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 4
+                    ])
+                    ->resourceCheckboxListColumns([
+                        'default' => 1,
+                        'sm' => 2
+                    ])
+                    ->recordTitleAttribute(false)
+                    ->localizePermissionLabels()
+                    ->simpleResourcePermissionView(false),
             ]);
     }
 }
+

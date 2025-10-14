@@ -2,33 +2,46 @@
 
 namespace App\Models;
 
+use App\Models\User;
+use App\Models\LabCustomer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomerCategory extends Model
+class LabCustomerEmail extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $table = 'customer_categories';
+    /**
+     * Πίνακας βάσης δεδομένων
+     */
+    protected $table = 'lab_customer_emails';
 
+    /**
+     * Μαζικά ενημερώσιμα πεδία
+     */
     protected $fillable = [
-        'name',
-        'description',
-        'status',
+        'lab_customer_id',
+        'email',
+        'is_primary',
+        'notes',
         'created_by',
         'updated_by',
     ];
 
+    /**
+     * Τύποι δεδομένων
+     */
     protected $casts = [
-        'status' => \App\Enums\CustomerCategoryStatus::class,
+        'is_primary' => 'boolean',
     ];
 
+    /**
+     * Αυτόματη συμπλήρωση audit πεδίων
+     */
     public static function boot()
     {
         parent::boot();
@@ -47,45 +60,32 @@ class CustomerCategory extends Model
         });
     }
 
+    /**
+     * Activity Log configuration
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->useLogName('lab.customer_category')
+            ->useLogName('lab.customer_email')
             ->logFillable()
-            ->setDescriptionForEvent(fn(string $eventName) => "Customer category has been {$eventName}");
+            ->setDescriptionForEvent(fn(string $eventName) => "Customer email record has been {$eventName}");
     }
 
     /**
      * Σχέσεις
      */
-    public function customers(): HasMany
+    public function customer()
     {
-        return $this->hasMany(LabCustomer::class, 'customer_category_id');
+        return $this->belongsTo(LabCustomer::class, 'lab_customer_id');
     }
 
-    public function createdBy(): BelongsTo
+    public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedBy(): BelongsTo
+    public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    /**
-     * Accessor: Επιστρέφει τον αριθμό πελατών στην κατηγορία
-     */
-    public function getCustomersCountAttribute(): int
-    {
-        return $this->customers()->count();
-    }
-
-    /**
-     * Scope για ενεργές κατηγορίες
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('status', \App\Enums\CustomerCategoryStatus::Active);
     }
 }

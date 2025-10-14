@@ -2,110 +2,66 @@
 
 namespace App\Policies;
 
-use App\Models\User;
+use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class UserPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Δίνουμε πάντα full access στους Administrators.
-     */
-    public function before(User $user, string $ability): ?bool
+    public function viewAny(AuthUser $authUser): bool
     {
-        return $user->hasRole('Administrator') ? true : null;
+        return $authUser->can('view_any_user');
     }
 
-    /**
-     * Εμφάνιση λίστας χρηστών.
-     */
-    public function viewAny(User $user): bool
+    public function view(AuthUser $authUser): bool
     {
-        return $user->can('view_any_user') || $user->can('manage_users');
+        return $authUser->can('view_user');
     }
 
-    /**
-     * Προβολή συγκεκριμένου χρήστη.
-     */
-    public function view(User $user, User $target): bool
+    public function create(AuthUser $authUser): bool
     {
-        // Δεν επιτρέπεται να βλέπει άλλον Admin αν δεν είναι Admin
-        if ($target->hasRole('Administrator') && !$user->hasRole('Administrator')) {
-            return false;
-        }
-
-        return $user->can('view_user') || $user->can('manage_users');
+        return $authUser->can('create_user');
     }
 
-    /**
-     * Δημιουργία νέου χρήστη.
-     */
-    public function create(User $user): bool
+    public function update(AuthUser $authUser): bool
     {
-        return $user->can('create_user') || $user->can('manage_users');
+        return $authUser->can('update_user');
     }
 
-    /**
-     * Επεξεργασία υπάρχοντος χρήστη.
-     */
-    public function update(User $user, User $target): bool
+    public function delete(AuthUser $authUser): bool
     {
-        // Κανόνας ασφαλείας: non-admin δεν επεξεργάζεται Admin
-        if ($target->hasRole('Administrator') && !$user->hasRole('Administrator')) {
-            return false;
-        }
-
-        return $user->can('update_user') || $user->can('manage_users');
+        return $authUser->can('delete_user');
     }
 
-    /**
-     * Διαγραφή (soft delete) χρήστη.
-     */
-    public function delete(User $user, User $target): bool
+    public function restore(AuthUser $authUser): bool
     {
-        // Δεν επιτρέπεται διαγραφή Admin
-        if ($target->hasRole('Administrator')) {
-            return false;
-        }
-
-        return $user->can('delete_user') || $user->can('manage_users');
+        return $authUser->can('restore_user');
     }
 
-    /**
-     * Επαναφορά (restore) χρήστη.
-     */
-    public function restore(User $user, User $target): bool
+    public function forceDelete(AuthUser $authUser): bool
     {
-        return $user->can('restore_user') || $user->can('manage_users');
+        return $authUser->can('force_delete_user');
     }
 
-    /**
-     * Οριστική διαγραφή (force delete).
-     */
-    public function forceDelete(User $user, User $target): bool
+    public function forceDeleteAny(AuthUser $authUser): bool
     {
-        // Κανένας, εκτός Admin
-        if (!$user->hasRole('Administrator')) {
-            return false;
-        }
-
-        return $user->can('force_delete_user') || $user->can('manage_users');
+        return $authUser->can('force_delete_any_user');
     }
 
-    /**
-     * Εισαγωγή (import) χρηστών.
-     */
-    public function import(User $user): bool
+    public function restoreAny(AuthUser $authUser): bool
     {
-        return $user->can('import_user') || $user->can('manage_users');
+        return $authUser->can('restore_any_user');
     }
 
-    /**
-     * Εξαγωγή (export) χρηστών.
-     */
-    public function export(User $user): bool
+    public function replicate(AuthUser $authUser): bool
     {
-        return $user->can('export_user') || $user->can('manage_users');
+        return $authUser->can('replicate_user');
     }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('reorder_user');
+    }
+
 }
