@@ -29,6 +29,21 @@ class LabCustomerResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
     protected static string|UnitEnum|null $navigationGroup = 'Εργαστήριο';
 
+    public static function getNavigationBadge(): ?string
+    {
+        try {
+            // Υπολογίζει μόνο ενεργούς πελάτες
+            return number_format(LabCustomer::where('status', 'active')->count());
+        } catch (\Throwable $e) {
+            return null; // σε περίπτωση που δεν υπάρχει πίνακας ακόμα
+        }
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'info'; // επιλογές: primary, success, warning, danger, gray, info
+    }
+
     public static function form(Schema $schema): Schema
     {
         return LabCustomerForm::configure($schema);

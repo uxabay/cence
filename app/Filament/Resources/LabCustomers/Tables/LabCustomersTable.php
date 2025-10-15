@@ -79,6 +79,9 @@ class LabCustomersTable
             ->headerActions([
                 ImportAction::make()
                     ->label('Εισαγωγή πελατών')
+                    ->modalHeading('Εισαγωγή αρχείου CSV')
+                    ->modalSubmitActionLabel('Εκκίνηση εισαγωγής')
+                    ->modalCancelActionLabel('Ακύρωση')
                     ->importer(LabCustomerImporter::class),
             ])
 
