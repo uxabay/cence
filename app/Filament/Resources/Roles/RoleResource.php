@@ -40,6 +40,7 @@ class RoleResource extends Resource
     use HasShieldFormComponents;
 
     protected static ?string $recordTitleAttribute = 'name';
+    protected static ?int $navigationSort = 910;
 
     public static function form(Schema $schema): Schema
     {

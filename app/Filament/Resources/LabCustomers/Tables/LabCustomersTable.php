@@ -104,7 +104,10 @@ class LabCustomersTable
                     RestoreBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('name')
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100])
+            ->extremePaginationLinks()
+            ->poll('30s')
             ->emptyStateHeading(('Δεν υπάρχουν πελατες'))
             ->emptyStateDescription('Δημιουργήστε έναν νέο πελάτη για να ξεκινήσετε.');
     }

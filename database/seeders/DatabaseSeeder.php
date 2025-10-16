@@ -11,10 +11,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1️⃣ Ρόλοι & δικαιώματα (πλήρες σετάρισμα)
-        $this->call(AuthSeeder::class);
-
         // 2️⃣ Αρχικός διαχειριστής (admin user)
         $this->call(AdminUserSeeder::class);
+        $this->call(LabSeeder::class);
+        $this->call(SampleTypeSeeder::class);
     }
 }

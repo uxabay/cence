@@ -28,6 +28,7 @@ class LabCustomerResource extends Resource
     protected static ?string $navigationLabel = 'Πελάτες';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
     protected static string|UnitEnum|null $navigationGroup = 'Εργαστήριο';
+    protected static ?int $navigationSort = 400;
 
     public static function getNavigationBadge(): ?string
     {

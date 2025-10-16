@@ -90,6 +90,12 @@ class UsersTable
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->label('') // χωρίς label
                 ->tooltip('Ενέργειες'),
-            ]);
+            ])
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100])
+            ->extremePaginationLinks()
+            ->poll('30s')
+            ->emptyStateHeading(('Δεν υπάρχουν χρήστες'))
+            ->emptyStateDescription('Δημιουργήστε έναν νέο χρήστη για να ξεκινήσετε.');            ;
     }
 }

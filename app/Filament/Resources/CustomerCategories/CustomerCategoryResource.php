@@ -42,6 +42,7 @@ class CustomerCategoryResource extends Resource
     protected static ?string $navigationLabel = 'Κατηγορίες Πελατών';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::RectangleStack;
     protected static string|UnitEnum|null $navigationGroup = 'Εργαστήριο';
+    protected static ?int $navigationSort = 410;
 
     public static function form(Schema $schema): Schema
     {
@@ -240,6 +241,10 @@ class CustomerCategoryResource extends Resource
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100])
+            ->extremePaginationLinks()
+            ->poll('30s')
             ->emptyStateHeading(('Δεν υπάρχουν κατηγορίες πελατών'))
             ->emptyStateDescription(('Δημιουργήστε μια νέα κατηγορία για να ξεκινήσετε.'));
     }
