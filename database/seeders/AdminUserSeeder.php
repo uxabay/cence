@@ -6,35 +6,48 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use App\Enums\UserStatus;
 
 class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Αν υπάρχει ήδη admin user, τον ενημερώνει
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@cence.test'],
+        // 1️⃣ Δημιουργία ή εύρεση ρόλου Administrator
+        $adminRole = Role::firstOrCreate(
             [
-                'name' => 'System Administrator',
-                'password' => Hash::make('password'), // άλλαξέ το αργότερα!
-                'status' => 'active',
-                'force_password_reset' => true,
+                'name' => 'Administrator',
+                'guard_name' => 'web',
             ]
         );
 
-        // Ανάθεση ρόλου Administrator
-        $role = Role::where('name', 'Administrator')->first();
-        if ($role && !$admin->hasRole($role->name)) {
-            $admin->assignRole($role);
+        // 2️⃣ Δημιουργία ή ενημέρωση χρήστη admin
+        $adminUser = User::updateOrCreate(
+            ['email' => 'admin@cence.test'],
+            [
+                'name' => 'System Administrator',
+                'password' => Hash::make('password'),
+                'status' => UserStatus::ACTIVE,
+                'force_password_reset' => false,
+            ]
+        );
+
+        // 3️⃣ Αν δεν έχει τον ρόλο Administrator, τον προσθέτουμε
+        if (!$adminUser->hasRole('Administrator')) {
+            $adminUser->assignRole($adminRole);
         }
 
-        // Προαιρετικά, ενημέρωση audit fields
-        if (method_exists($admin, 'saveQuietly')) {
-            $admin->saveQuietly();
-        } else {
-            $admin->save();
+        // 4️⃣ Προαιρετικά, δίνουμε όλα τα permissions του Filament Shield
+        try {
+            if (class_exists(\BezhanSalleh\FilamentShield\Models\Permission::class)) {
+                $permissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+                $adminRole->syncPermissions($permissions);
+            }
+        } catch (\Throwable $th) {
+            $this->command->warn('⚠️ Shield permissions not found — skipping.');
         }
 
-        $this->command->info('✅ Administrator user created or updated.');
+        // 5️⃣ Εμφάνιση ενημερωτικού μηνύματος
+        $this->command->info('✅ Administrator role and admin user ensured.');
+        $this->command->warn('➡️ Email: admin@cence.test | Password: password');
     }
 }

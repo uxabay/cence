@@ -73,6 +73,11 @@ class LabSampleCategory extends Model
     /**
      * Σχέσεις
      */
+    public function registrations()
+    {
+        return $this->hasMany(Registration::class, 'lab_sample_category_id');
+    }
+
     public function lab(): BelongsTo
     {
         return $this->belongsTo(Lab::class, 'lab_id');

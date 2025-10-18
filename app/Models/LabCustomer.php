@@ -83,6 +83,11 @@ class LabCustomer extends Model
     /**
      * Σχέσεις
      */
+    public function registrations()
+    {
+        return $this->hasMany(Registration::class, 'lab_customer_id');
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(CustomerCategory::class, 'customer_category_id');

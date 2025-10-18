@@ -34,7 +34,7 @@ class LabCustomerResource extends Resource
     {
         try {
             // Υπολογίζει μόνο ενεργούς πελάτες
-            return number_format(LabCustomer::where('status', 'active')->count());
+            return number_format(LabCustomer::count());
         } catch (\Throwable $e) {
             return null; // σε περίπτωση που δεν υπάρχει πίνακας ακόμα
         }
