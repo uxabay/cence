@@ -6,6 +6,7 @@ use App\Filament\Resources\LabCustomers\Pages\CreateLabCustomer;
 use App\Filament\Resources\LabCustomers\Pages\EditLabCustomer;
 use App\Filament\Resources\LabCustomers\Pages\ListLabCustomers;
 use App\Filament\Resources\LabCustomers\Pages\ViewLabCustomer;
+use App\Filament\Resources\LabCustomers\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\LabCustomers\Schemas\LabCustomerForm;
 use App\Filament\Resources\LabCustomers\Schemas\LabCustomerInfolist;
 use App\Filament\Resources\LabCustomers\Tables\LabCustomersTable;
@@ -23,7 +24,7 @@ class LabCustomerResource extends Resource
 {
     protected static ?string $model = LabCustomer::class;
     protected static ?string $recordTitleAttribute = 'name';
-    protected static ?string $modelLabel = 'Πελάτης';
+    protected static ?string $modelLabel = 'Πελάτη';
     protected static ?string $pluralModelLabel = 'Διαχείριση Πελατών';
     protected static ?string $navigationLabel = 'Πελάτες';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
@@ -64,6 +65,7 @@ class LabCustomerResource extends Resource
     {
         return [
             //
+            RelationManagers\EmailsRelationManager::class,
         ];
     }
 

@@ -92,9 +92,9 @@ class UsersTable
                 ->tooltip('Ενέργειες'),
             ])
             ->defaultPaginationPageOption(25)
-            ->paginated([10, 25, 50, 100])
+            ->paginated([10, 25, 50])
             ->extremePaginationLinks()
-            ->poll('30s')
+            ->poll('10s')
             ->emptyStateHeading(('Δεν υπάρχουν χρήστες'))
             ->emptyStateDescription('Δημιουργήστε έναν νέο χρήστη για να ξεκινήσετε.');            ;
     }

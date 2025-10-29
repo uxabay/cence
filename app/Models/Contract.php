@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use App\Enums\ContractStatusEnum;
-use App\Enums\ContractTypeEnum;
+use App\Enums\RecordStatusEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Contract extends Model
 {
@@ -18,40 +19,32 @@ class Contract extends Model
     protected $table = 'contracts';
 
     protected $fillable = [
-        'contract_number',
         'title',
-        'subject',
-        'contract_type',
         'lab_customer_id',
-        'start_date',
-        'end_date',
-        'total_value',
-        'funding_source',
-        'scope',
+        'contract_number',
+        'date_start',
+        'date_end',
+        'description',
         'status',
-        'parent_id',
+        'file_attachment_id',
         'remarks',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
-        'total_value' => 'decimal:2',
-        'status' => ContractStatusEnum::class,
-        'contract_type' => ContractTypeEnum::class,
+        'status' => RecordStatusEnum::class,
+        'date_start' => 'date',
+        'date_end' => 'date',
     ];
 
     /*
     |--------------------------------------------------------------------------
-    | Boot
+    | Boot events for audit fields
     |--------------------------------------------------------------------------
     */
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             if (Auth::check()) {
                 $model->created_by = Auth::id();
@@ -76,7 +69,7 @@ class Contract extends Model
         return LogOptions::defaults()
             ->useLogName('contract')
             ->logFillable()
-            ->setDescriptionForEvent(fn(string $eventName) => "Contract has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Contract record has been {$eventName}");
     }
 
     /*
@@ -84,47 +77,32 @@ class Contract extends Model
     | Relationships
     |--------------------------------------------------------------------------
     */
-    public function registrations()
-    {
-        return $this->hasMany(Registration::class, 'contract_id');
-    }
-
-    public function labCustomer()
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(LabCustomer::class, 'lab_customer_id');
     }
 
-    public function parentContract()
+    public function samples(): HasMany
     {
-        return $this->belongsTo(self::class, 'parent_id');
+        return $this->hasMany(ContractSample::class, 'contract_id');
     }
 
-    public function contractYears()
+    public function revisions(): HasMany
     {
-        return $this->hasMany(ContractYear::class);
+        return $this->hasMany(ContractRevision::class, 'contract_id');
     }
 
-    public function sampleTypes()
+    public function fileAttachment(): BelongsTo
     {
-        return $this->hasMany(ContractSampleType::class);
+        return $this->belongsTo(FileAttachment::class, 'file_attachment_id');
     }
 
-    public function revisions()
-    {
-        return $this->hasMany(ContractRevision::class);
-    }
-
-    public function reallocations()
-    {
-        return $this->hasMany(ContractSampleReallocation::class);
-    }
-
-    public function createdBy()
+    public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedBy()
+    public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
@@ -136,74 +114,114 @@ class Contract extends Model
     */
     public function scopeActive($query)
     {
-        return $query->where('status', ContractStatusEnum::Active);
+        return $query->where('status', RecordStatusEnum::Active);
     }
 
-    public function scopeExpired($query)
+    public function scopeInactive($query)
     {
-        return $query->where('status', ContractStatusEnum::Expired);
+        return $query->where('status', RecordStatusEnum::Inactive);
     }
 
-     public function scopeActiveWithProgress($query)
+    public function scopeBetweenDates($query, ?string $from = null, ?string $to = null)
     {
-        return $query->where('status', 'active')
-            ->withCount(['registrations as valid_samples_sum' => fn($q) => $q->select(DB::raw('sum(valid_samples)'))]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Accessors
-    |--------------------------------------------------------------------------
-    */
-    public function getDurationAttribute(): string
-    {
-        if (!$this->start_date || !$this->end_date) {
-            return '-';
+        if ($from) {
+            $query->whereDate('date_start', '>=', $from);
         }
 
-        return $this->start_date->format('d/m/Y') . ' - ' . $this->end_date->format('d/m/Y');
-    }
+        if ($to) {
+            $query->whereDate('date_end', '<=', $to);
+        }
 
-    public function getTotalValueFormattedAttribute(): string
-    {
-        return number_format($this->total_value, 2, ',', '.') . ' €';
-    }
-
-    public function getTotalValidSamplesAttribute(): int
-    {
-        return $this->registrations()->sum('valid_samples');
-    }
-
-    public function getExecutionPercentageAttribute(): float
-    {
-        $expected = $this->contractSampleTypes()->sum('expected_samples'); // αν υπάρχει τέτοιο πεδίο
-        if ($expected <= 0) return 0;
-
-        return round(($this->total_valid_samples / $expected) * 100, 2);
+        return $query;
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | Accessors & Helpers
     |--------------------------------------------------------------------------
     */
-    public function getDisplayNameAttribute(): string
+    public function getStatusLabelAttribute(): string
     {
-        // Αριθμός σύμβασης
-        $number = $this->contract_number ? "Σύμβαση {$this->contract_number}" : "Σύμβαση";
-
-        // Πελάτης ή τίτλος
-        $descriptor = $this->title
-            ? $this->title
-            : ($this->customer?->name ?? '');
-
-        // Έτος (αν υπάρχει ημερομηνία έναρξης)
-        $year = $this->start_date?->format('Y');
-
-        // Συνδυασμός περιεκτικός και καθαρός
-        $parts = array_filter([$number, $descriptor, $year]);
-
-        return implode(' – ', $parts);
+        return $this->status?->getLabel() ?? '-';
     }
 
+    public function getDisplayTitleAttribute(): string
+    {
+        return $this->contract_number
+            ? "{$this->contract_number} – {$this->title}"
+            : $this->title;
+    }
+
+    /**
+     * Συνολικά προϋπολογισμένα ποσά
+     */
+    public function getForecastedAmountAttribute(): float
+    {
+        return $this->samples()->sum('forecasted_amount');
+    }
+
+    /**
+     * Συγκεντρωτικά στατιστικά (με προαιρετικά φίλτρα ημερομηνιών)
+     */
+    public function getStats(string|null $from = null, string|null $to = null): array
+    {
+        $samples = $this->samples()->with('category')->get();
+
+        // Ομαδοποίηση ανά κατηγορία
+        $grouped = $samples->groupBy('category.id');
+
+        $forecastedSamples = 0;
+        $forecastedAmount = 0;
+        $actualSamples = 0;
+        $actualAmount = 0;
+
+        foreach ($grouped as $categorySamples) {
+            $forecastedSamples += $categorySamples->sum('net_forecasted_samples');
+            $forecastedAmount  += $categorySamples->sum('net_forecasted_amount');
+
+            $actualSamples += $categorySamples->sum(fn ($s) => $s->getActualSamples($from, $to));
+            $actualAmount  += $categorySamples->sum(fn ($s) => $s->getActualAmount($from, $to));
+        }
+
+        return [
+            'forecasted_samples' => $forecastedSamples,
+            'forecasted_amount'  => $forecastedAmount,
+            'actual_samples'     => $actualSamples,
+            'actual_amount'      => $actualAmount,
+        ];
+    }
+
+
+    // Compatibility for Filament
+    public function getStatsAttribute(): array
+    {
+        return $this->getStats();
+    }
+
+    public function getProgressPercentage(?string $from = null, ?string $to = null): float
+    {
+        $stats = $this->getStats($from, $to);
+        return $stats['forecasted_amount'] > 0
+            ? round(($stats['actual_amount'] / $stats['forecasted_amount']) * 100, 1)
+            : 0.0;
+    }
+
+    public function getProgressPercentageAttribute(): float
+    {
+        return $this->getProgressPercentage();
+    }
+
+    /**
+     * Έλεγχος για warnings (>90%)
+     */
+    public function getHasWarningAttribute(): bool
+    {
+        $stats = $this->getStats();
+        if ($stats['forecasted_samples'] === 0) {
+            return false;
+        }
+
+        $ratio = $stats['actual_samples'] / $stats['forecasted_samples'];
+        return $ratio >= 0.9;
+    }
 }

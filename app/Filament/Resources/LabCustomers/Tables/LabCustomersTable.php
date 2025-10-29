@@ -30,40 +30,61 @@ class LabCustomersTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Ονομασία')
+                    ->label('Επωνυμία')
+                    ->icon('heroicon-o-building-office-2')
                     ->searchable()
                     ->sortable()
-                    ->description(fn($record) => $record->contact_person)
+                    ->description(fn($record) => $record->contact_person ? "Επικ. πρόσωπο: {$record->contact_person}" : null)
                     ->tooltip('Ονομασία πελάτη'),
 
                 TextColumn::make('category.name')
                     ->label('Κατηγορία')
                     ->sortable()
+                    ->badge()
+                    ->color('info')
+                    ->icon('heroicon-o-rectangle-stack'),
+
+                TextColumn::make('primary_email')
+                    ->label('Κύριο Email')
+                    ->icon('heroicon-o-envelope')
                     ->toggleable()
-                    ->badge(),
+                    ->copyable()
+                    ->tooltip('Πρωτεύον email επικοινωνίας'),
 
                 TextColumn::make('phone')
                     ->label('Τηλέφωνο')
+                    ->icon('heroicon-o-phone')
                     ->toggleable()
-                    ->icon('heroicon-o-phone'),
+                    ->searchable(),
 
-                TextColumn::make('emails.email')
-                    ->label('Emails')
-                    ->listWithLineBreaks()
-                    ->limitList(3)
+                TextColumn::make('city')
+                    ->label('Πόλη')
                     ->toggleable()
-                    ->wrap(),
+                    ->sortable()
+                    ->tooltip(fn($record) => $record->full_address),
+
+                TextColumn::make('organization_code')
+                    ->label('Κωδ. Οργάνωσης')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('tax_id')
+                    ->label('Α.Φ.Μ.')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('status')
                     ->label('Κατάσταση')
                     ->badge()
+                    ->color(fn($state) => $state->getColor())
+                    ->icon(fn($state) => $state->getIcon())
                     ->sortable(),
 
                 TextColumn::make('last_update_at')
                     ->label('Τελευταία ενημέρωση')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
+
             ->filters([
                 SelectFilter::make('customer_category_id')
                     ->label('Κατηγορία')
@@ -72,10 +93,14 @@ class LabCustomersTable
 
                 SelectFilter::make('status')
                     ->label('Κατάσταση')
-                    ->options(collect(CustomerStatusEnum::cases())->mapWithKeys(fn($case) => [$case->value => $case->getLabel()])),
+                    ->options(
+                        collect(CustomerStatusEnum::cases())
+                            ->mapWithKeys(fn($case) => [$case->value => $case->getLabel()])
+                    ),
 
                 TrashedFilter::make(),
             ])
+
             ->headerActions([
                 ImportAction::make()
                     ->label('Εισαγωγή πελατών')
@@ -89,14 +114,13 @@ class LabCustomersTable
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
-                    ReplicateAction::make()
-                        ->tooltip('Δημιουργία αντιγράφου εγγραφής'),
-
+                    ReplicateAction::make()->tooltip('Δημιουργία αντιγράφου εγγραφής'),
                     DeleteAction::make(),
                     ForceDeleteAction::make(),
                     RestoreAction::make(),
                 ]),
             ])
+
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
@@ -104,11 +128,11 @@ class LabCustomersTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->poll('live')
             ->defaultPaginationPageOption(25)
             ->paginated([10, 25, 50, 100])
             ->extremePaginationLinks()
-            ->poll('30s')
-            ->emptyStateHeading(('Δεν υπάρχουν πελατες'))
+            ->emptyStateHeading('Δεν υπάρχουν πελάτες')
             ->emptyStateDescription('Δημιουργήστε έναν νέο πελάτη για να ξεκινήσετε.');
     }
 }

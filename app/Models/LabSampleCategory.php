@@ -24,30 +24,28 @@ class LabSampleCategory extends Model
         'description',
         'lab_id',
         'sample_type_id',
-        'price',
+        'default_price',
+        'currency_code',
         'method_ref',
         'standard_ref',
         'status',
         'sort_order',
-        'is_counted_in_lab',
-        'is_counted_in_contract',
-        'is_virtual',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
+        'default_price' => 'decimal:2',
         'status' => RecordStatusEnum::class,
-        'is_counted_in_lab' => 'boolean',
-        'is_counted_in_contract' => 'boolean',
-        'is_virtual' => 'boolean',
     ];
 
-    public static function boot()
+    /*
+    |--------------------------------------------------------------------------
+    | Boot
+    |--------------------------------------------------------------------------
+    */
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             if (Auth::check()) {
                 $model->created_by = Auth::id();
@@ -62,22 +60,24 @@ class LabSampleCategory extends Model
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log
+    |--------------------------------------------------------------------------
+    */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
             ->useLogName('lab.sample_category')
             ->logFillable()
-            ->setDescriptionForEvent(fn(string $eventName) => "Lab sample category has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Lab sample category has been {$eventName}");
     }
 
-    /**
-     * Σχέσεις
-     */
-    public function registrations()
-    {
-        return $this->hasMany(Registration::class, 'lab_sample_category_id');
-    }
-
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
     public function lab(): BelongsTo
     {
         return $this->belongsTo(Lab::class, 'lab_id');
@@ -86,6 +86,11 @@ class LabSampleCategory extends Model
     public function sampleType(): BelongsTo
     {
         return $this->belongsTo(SampleType::class, 'sample_type_id');
+    }
+
+    public function registrations()
+    {
+        return $this->hasMany(Registration::class, 'lab_sample_category_id');
     }
 
     public function createdBy(): BelongsTo
@@ -98,9 +103,11 @@ class LabSampleCategory extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /**
-     * Scopes
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
     public function scopeActive($query)
     {
         return $query->where('status', RecordStatusEnum::Active);
@@ -111,9 +118,16 @@ class LabSampleCategory extends Model
         return $query->where('status', RecordStatusEnum::Inactive);
     }
 
-    /**
-     * Accessors & Helpers
-     */
+    public function scopeByLab($query, int $labId)
+    {
+        return $query->where('lab_id', $labId);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors & Helpers
+    |--------------------------------------------------------------------------
+    */
     public function getFullNameAttribute(): string
     {
         return $this->short_name
@@ -127,26 +141,21 @@ class LabSampleCategory extends Model
     }
 
     /**
-     * Helper για απεικόνιση συμμετοχής στα στατιστικά
+     * Επιστρέφει την τιμή για τη συγκεκριμένη ημερομηνία.
+     * Προς το παρόν επιστρέφει πάντα την default τιμή.
      */
-    public function getCountingFlagsAttribute(): string
+    public function getPriceForDate(?string $date = null): float
     {
-        if ($this->is_virtual) {
-            return 'Εικονική (χωρίς μέτρηση)';
-        }
+        return (float) $this->default_price;
+    }
 
-        $parts = [];
-
-        if ($this->is_counted_in_lab) {
-            $parts[] = 'Εργαστήριο';
-        }
-
-        if ($this->is_counted_in_contract) {
-            $parts[] = 'Σύμβαση';
-        }
-
-        return !empty($parts)
-            ? implode(' & ', $parts)
-            : 'Δεν μετρά πουθενά';
+    /**
+     * Εμφανιστική ετικέτα (code + name)
+     */
+    public function getDisplayLabelAttribute(): string
+    {
+        return $this->code
+            ? "{$this->code} – {$this->name}"
+            : $this->name;
     }
 }

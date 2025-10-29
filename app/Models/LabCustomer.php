@@ -16,14 +16,8 @@ class LabCustomer extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    /**
-     * Πίνακας βάσης δεδομένων
-     */
     protected $table = 'lab_customers';
 
-    /**
-     * Μαζικά ενημερώσιμα πεδία
-     */
     protected $fillable = [
         'name',
         'customer_category_id',
@@ -32,6 +26,9 @@ class LabCustomer extends Model
         'address',
         'city',
         'postal_code',
+        'tax_id',
+        'organization_code',
+        'email_primary',
         'encryption_key',
         'last_update_at',
         'status',
@@ -40,21 +37,18 @@ class LabCustomer extends Model
         'updated_by',
     ];
 
-    /**
-     * Τύποι δεδομένων
-     */
     protected $casts = [
         'status' => CustomerStatusEnum::class,
         'last_update_at' => 'datetime',
     ];
 
-    /**
-     * Αυτόματη συμπλήρωση audit πεδίων
-     */
-    public static function boot()
+    /*
+    |--------------------------------------------------------------------------
+    | Boot events for audit fields
+    |--------------------------------------------------------------------------
+    */
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             if (Auth::check()) {
                 $model->created_by = Auth::id();
@@ -69,9 +63,11 @@ class LabCustomer extends Model
         });
     }
 
-    /**
-     * Activity Log configuration
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log
+    |--------------------------------------------------------------------------
+    */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -80,10 +76,12 @@ class LabCustomer extends Model
             ->setDescriptionForEvent(fn(string $eventName) => "Customer record has been {$eventName}");
     }
 
-    /**
-     * Σχέσεις
-     */
-    public function registrations()
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+    public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class, 'lab_customer_id');
     }
@@ -108,9 +106,11 @@ class LabCustomer extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /**
-     * Scopes
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
     public function scopeActive($query)
     {
         return $query->where('status', CustomerStatusEnum::Active);
@@ -121,9 +121,19 @@ class LabCustomer extends Model
         return $query->where('status', CustomerStatusEnum::Inactive);
     }
 
+    public function scopeArchived($query)
+    {
+        return $query->where('status', CustomerStatusEnum::Archived);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Helper για μέτρηση πελατών ανά κατηγορία
-     * Παράδειγμα: LabCustomer::countByCategory($categoryId)
+     * Μετρά πόσοι πελάτες ανήκουν σε μια κατηγορία.
      */
     public static function countByCategory(int $categoryId): int
     {
@@ -131,16 +141,29 @@ class LabCustomer extends Model
     }
 
     /**
-     * Accessors
+     * Επιστρέφει το κύριο email (primary) — είτε από το πεδίο cache είτε από τη σχέση.
      */
+    public function getPrimaryEmailAttribute(): ?string
+    {
+        if (!empty($this->email_primary)) {
+            return $this->email_primary;
+        }
 
-    // Επιστρέφει την ελληνική ετικέτα του status (π.χ. Ενεργός / Ανενεργός)
+        return $this->emails()
+            ->where('is_primary', true)
+            ->value('email');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
     public function getStatusLabelAttribute(): string
     {
         return $this->status?->getLabel() ?? '-';
     }
 
-    // Επιστρέφει συγκεντρωτικά τη διεύθυνση σε μία γραμμή
     public function getFullAddressAttribute(): string
     {
         $parts = array_filter([
@@ -151,5 +174,4 @@ class LabCustomer extends Model
 
         return implode(', ', $parts);
     }
-
 }

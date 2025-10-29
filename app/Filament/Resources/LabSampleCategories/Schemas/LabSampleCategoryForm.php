@@ -6,10 +6,8 @@ use App\Enums\RecordStatusEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class LabSampleCategoryForm
@@ -19,112 +17,123 @@ class LabSampleCategoryForm
         return $schema
             ->components([
 
-                Section::make()
+                // =======================
+                // ΒΑΣΙΚΑ ΣΤΟΙΧΕΙΑ
+                // =======================
+                Section::make('Βασικά στοιχεία')
+                    ->description('Καταχώριση των κύριων στοιχείων της κατηγορίας δείγματος.')
                     ->schema([
-                        Fieldset::make('Βασικά στοιχεία')
+                        Grid::make(2)
                             ->schema([
                                 TextInput::make('name')
                                     ->label('Ονομασία')
                                     ->required()
                                     ->maxLength(255)
-                                    ->columnSpanFull(),
-
-                                TextInput::make('short_name')
-                                    ->label('Σύντομη ονομασία')
-                                    ->maxLength(100),
+                                    ->columnSpanFull()
+                                    ->hint('Το πλήρες όνομα της κατηγορίας δείγματος όπως εμφανίζεται στις αναφορές.'),
 
                                 TextInput::make('code')
                                     ->label('Κωδικός')
-                                    ->maxLength(50),
+                                    ->maxLength(50)
+                                    ->hint('Μοναδικός εσωτερικός κωδικός ή συντομογραφία.')
+                                    ->placeholder('-'),
 
                                 Textarea::make('description')
                                     ->label('Περιγραφή')
                                     ->rows(3)
+                                    ->placeholder('Προαιρετικά, σύντομη περιγραφή του περιεχομένου ή του σκοπού.')
                                     ->columnSpanFull(),
-                        ]),
-
-                        Grid::make(1)
-                            ->schema([
-                                Fieldset::make('Αντιστοιχίσεις')
-                                    ->schema([
-                                        Select::make('lab_id')
-                                            ->label('Εργαστήριο')
-                                            ->relationship('lab', 'name')
-                                            ->required(),
-
-                                        Select::make('sample_type_id')
-                                            ->label('Τύπος δείγματος')
-                                            ->relationship('sampleType', 'name')
-                                            ->required(),
-                                    ])
-                                    ->columns(2),
-
-                                Grid::make(1)
-                                    ->schema([
-                                        Toggle::make('is_counted_in_lab')
-                                            ->label('Μετρά στα στατιστικά του εργαστηρίου')
-                                            ->default(true),
-
-                                        Toggle::make('is_counted_in_contract')
-                                            ->label('Μετρά στα στατιστικά της σύμβασης')
-                                            ->default(true),
-
-                                        Toggle::make('is_virtual')
-                                            ->label('Εικονική κατηγορία (χωρίς μέτρηση)')
-                                            ->default(false),
-                                    ]),
                             ]),
                     ])
                     ->compact()
-                    ->columnSpanFull()
-                    ->columns(2),
+                    ->columnSpanFull(),
 
-                Section::make('Οικονομικά & Πρότυπα')
+                // =======================
+                // ΑΝΤΙΣΤΟΙΧΙΣΕΙΣ
+                // =======================
+                Section::make('Αντιστοιχίσεις')
+                    ->description('Σύνδεση με το εργαστήριο και τον τύπο δείγματος.')
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                TextInput::make('price')
+                                Select::make('lab_id')
+                                    ->label('Εργαστήριο')
+                                    ->relationship('lab', 'name')
+                                    ->searchable()
+                                    ->required()
+                                    ->placeholder('Επιλέξτε εργαστήριο')
+                                    ->hint('Το εργαστήριο στο οποίο ανήκει η κατηγορία.'),
+
+                                Select::make('sample_type_id')
+                                    ->label('Τύπος δείγματος')
+                                    ->relationship('sampleType', 'name')
+                                    ->searchable()
+                                    ->required()
+                                    ->placeholder('Επιλέξτε τύπο δείγματος')
+                                    ->hint('Ο γενικός τύπος δείγματος που αντιστοιχεί στην κατηγορία.'),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+
+                // =======================
+                // ΟΙΚΟΝΟΜΙΚΑ & ΠΡΟΤΥΠΑ
+                // =======================
+                Section::make('Οικονομικά & Πρότυπα')
+                    ->description('Οικονομικά στοιχεία και επιστημονικές αναφορές.')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('default_price')
                                     ->label('Τιμή (€)')
                                     ->numeric()
                                     ->step(0.01)
                                     ->prefix('€')
                                     ->default(0.00)
-                                    ->required(),
+                                    ->required()
+                                    ->hint('Η προκαθορισμένη τιμή για την εξέταση αυτής της κατηγορίας.'),
 
-                                TextInput::make('method_ref')
-                                    ->label('Μέθοδος')
-                                    ->maxLength(255),
+                                TextInput::make('currency_code')
+                                    ->label('Νόμισμα')
+                                    ->maxLength(3)
+                                    ->default('EUR')
+                                    ->hint('Συνήθως EUR για ευρώ.'),
                             ]),
-
-                        Grid::make(1)
+                        Grid::make(2)
                             ->schema([
+                                TextInput::make('method_ref')
+                                    ->label('Μέθοδος αναφοράς')
+                                    ->maxLength(255)
+                                    ->placeholder('-')
+                                    ->hint('Αναφορά στη χρησιμοποιούμενη μέθοδο ή πρωτόκολλο.'),
+
                                 TextInput::make('standard_ref')
                                     ->label('Πρότυπο / Νομοθεσία')
-                                    ->columnSpanFull()
-                                    ->maxLength(255),
-                            ])
+                                    ->maxLength(255)
+                                    ->placeholder('-')
+                                    ->hint('Πρότυπο, οδηγία ή κανονισμός που σχετίζεται με την εξέταση.'),
+                            ]),
                     ])
-                    ->columnSpanFull()
-                    ->columns(2),
+                    ->columnSpanFull(),
 
-                Section::make('Κατάσταση & σειρά εμφάνισης')
+                // =======================
+                // ΚΑΤΑΣΤΑΣΗ
+                // =======================
+                Section::make('Κατάσταση')
+                    ->description('Ενεργοποίηση ή απενεργοποίηση της κατηγορίας.')
                     ->schema([
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options(collect(RecordStatusEnum::cases())->mapWithKeys(fn($case) => [
-                                $case->value => $case->getLabel(),
-                            ]))
-                            ->default(RecordStatusEnum::Active->value)
-                            ->required(),
-
-                        TextInput::make('sort_order')
-                            ->label('Σειρά εμφάνισης')
-                            ->numeric()
-                            ->default(0)
-                            ->hint('Μικρότερος αριθμός → ψηλότερη θέση'),
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('status')
+                                    ->label('Κατάσταση')
+                                    ->options(collect(RecordStatusEnum::cases())->mapWithKeys(
+                                        fn($case) => [$case->value => $case->getLabel()]
+                                    ))
+                                    ->default(RecordStatusEnum::Active->value)
+                                    ->required()
+                                    ->hint('Μόνο οι ενεργές κατηγορίες είναι διαθέσιμες για επιλογή σε φόρμες και συμβάσεις.'),
+                            ]),
                     ])
-                    ->columnSpanFull()
-                    ->columns(2),
+                    ->columnSpanFull(),
             ]);
     }
 }

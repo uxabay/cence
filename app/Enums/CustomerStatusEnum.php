@@ -10,12 +10,14 @@ enum CustomerStatusEnum: string implements HasLabel, HasColor, HasIcon
 {
     case Active = 'active';
     case Inactive = 'inactive';
+    case Archived = 'archived';
 
     public function getLabel(): string
     {
         return match ($this) {
             self::Active => 'Ενεργός',
             self::Inactive => 'Ανενεργός',
+            self::Archived => 'Αρχειοθετημένος',
         };
     }
 
@@ -24,14 +26,16 @@ enum CustomerStatusEnum: string implements HasLabel, HasColor, HasIcon
         return match ($this) {
             self::Active => 'success',
             self::Inactive => 'gray',
+            self::Archived => 'warning',
         };
     }
 
-    public function getIcon(): string|null
+    public function getIcon(): ?string
     {
         return match ($this) {
             self::Active => 'heroicon-o-check-circle',
             self::Inactive => 'heroicon-o-x-circle',
+            self::Archived => 'heroicon-o-archive-box',
         };
     }
 }

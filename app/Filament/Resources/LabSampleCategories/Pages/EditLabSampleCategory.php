@@ -22,4 +22,5 @@ class EditLabSampleCategory extends EditRecord
             RestoreAction::make(),
         ];
     }
+
 }

@@ -7,16 +7,7 @@ use App\Filament\Resources\CustomerCategories\Pages\ManageCustomerCategories;
 use App\Models\CustomerCategory;
 use BackedEnum;
 use UnitEnum;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\RestoreBulkAction;
-use Filament\Actions\ViewAction;
+use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -128,7 +119,7 @@ class CustomerCategoryResource extends Resource
                     ])
                     ->columns(2),
 
-                EditAction::make('edit')
+                Actions\EditAction::make('edit')
                     ->label('Επεξεργασία')
                     ->icon('heroicon-o-pencil-square')
                     ->color('primary'),
@@ -164,89 +155,108 @@ class CustomerCategoryResource extends Resource
     {
         return $table
             ->recordTitleAttribute('name')
+
+            /**
+             * --------------- COLUMNS ---------------
+             */
             ->columns([
                 TextColumn::make('name')
-                    ->label('Όνομα Κατηγορίας')
+                    ->label('Κατηγορία')
+                    ->icon('heroicon-o-rectangle-stack')
                     ->searchable()
                     ->sortable()
-                    ->icon('heroicon-o-rectangle-stack')
+                    ->wrap()
+                    ->tooltip(fn ($record) => $record->description)
                     ->weight('medium'),
 
                 TextColumn::make('status')
-                    ->label(('Κατάσταση'))
+                    ->label('Κατάσταση')
                     ->badge()
+                    ->formatStateUsing(fn ($state) => $state?->getLabel())
                     ->colors([
-                        'success' => fn ($state) => $state->value === 'active',
-                        'secondary' => fn ($state) => $state->value === 'inactive',
+                        'success' => fn ($state) => $state === CustomerCategoryStatus::Active,
+                        'gray'    => fn ($state) => $state === CustomerCategoryStatus::Inactive,
                     ])
                     ->icons([
-                        'heroicon-o-check-circle' => 'active',
-                        'heroicon-o-x-circle' => 'inactive',
+                        'heroicon-o-check-circle' => CustomerCategoryStatus::Active,
+                        'heroicon-o-x-circle'     => CustomerCategoryStatus::Inactive,
                     ])
                     ->sortable(),
 
                 TextColumn::make('customers_count')
                     ->label('Πελάτες')
                     ->badge()
-                    ->counts('customers') // Προβλεπόμενη σχέση για το μέλλον
+                    ->counts('customers') // counts() υποστηρίζεται σε Filament 4.x
                     ->color('info')
                     ->icon('heroicon-o-users')
                     ->alignCenter()
-                    ->tooltip('Αριθμός πελατών που ανήκουν σε αυτή την κατηγορία'),
-
-                TextColumn::make('createdBy.name')
-                    ->label('Δημιουργός')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('updatedBy.name')
-                    ->label(('Τελευταία ενημέρωση από'))
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->tooltip('Αριθμός πελατών που ανήκουν στην κατηγορία'),
 
                 TextColumn::make('created_at')
-                    ->label(('Δημιουργήθηκε'))
+                    ->label('Δημιουργήθηκε')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(),
-
-                TextColumn::make('updated_at')
-                    ->label(('Ενημερώθηκε'))
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('deleted_at')
-                    ->label('Διαγράφηκε')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
+
+            /**
+             * --------------- FILTERS ---------------
+             */
             ->filters([
-                TrashedFilter::make(),
+                TrashedFilter::make()
+                    ->label('Διεγραμμένα'),
             ])
+
+            /**
+             * --------------- ACTIONS ---------------
+             */
             ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make(),
-                    EditAction::make(),
-                    DeleteAction::make(),
-                    ForceDeleteAction::make(),
-                    RestoreAction::make(),
-                ]),
+                Actions\ActionGroup::make([
+                    Actions\ViewAction::make()
+                        ->label('Προβολή')
+                        ->icon('heroicon-o-eye'),
+
+                    Actions\EditAction::make()
+                        ->label('Επεξεργασία')
+                        ->icon('heroicon-o-pencil-square'),
+
+                    Actions\DeleteAction::make()
+                        ->label('Διαγραφή')
+                        ->icon('heroicon-o-trash'),
+
+                    Actions\ForceDeleteAction::make()
+                        ->label('Οριστική διαγραφή')
+                        ->icon('heroicon-o-x-circle'),
+
+                    Actions\RestoreAction::make()
+                        ->label('Επαναφορά')
+                        ->icon('heroicon-o-arrow-path'),
+                ])
+                ->icon('heroicon-o-ellipsis-vertical')
+                ->tooltip('Ενέργειες'),
             ])
+
+            /**
+             * --------------- BULK ACTIONS ---------------
+             */
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
+                    Actions\ForceDeleteBulkAction::make(),
+                    Actions\RestoreBulkAction::make(),
                 ]),
             ])
+
+            /**
+             * --------------- TABLE CONFIGURATION ---------------
+             */
+            ->striped()
             ->defaultPaginationPageOption(25)
             ->paginated([10, 25, 50, 100])
-            ->extremePaginationLinks()
-            ->poll('30s')
-            ->emptyStateHeading(('Δεν υπάρχουν κατηγορίες πελατών'))
-            ->emptyStateDescription(('Δημιουργήστε μια νέα κατηγορία για να ξεκινήσετε.'));
+            ->poll('live')
+            ->reorderable(false)
+            ->emptyStateHeading('Δεν υπάρχουν κατηγορίες πελατών')
+            ->emptyStateDescription('Δημιουργήστε μια νέα κατηγορία για να ξεκινήσετε.');
     }
 
     public static function getPages(): array

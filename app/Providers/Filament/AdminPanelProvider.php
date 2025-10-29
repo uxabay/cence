@@ -35,6 +35,8 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
 
+            ->font('TikTok Sans')
+
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label(NavigationGroupsNames::CONTRACTS->getLabel())
@@ -54,7 +56,7 @@ class AdminPanelProvider extends PanelProvider
             ])
 
             ->colors([
-                'primary' => '#2563eb',
+                'primary' => Color::Emerald,
             ])
 
             ->spa(hasPrefetching: true)

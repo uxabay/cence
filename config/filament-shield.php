@@ -230,6 +230,12 @@ return [
 
     'custom_permissions' => [
         'manage_roles',
+        'manage_financials',
+        'view_revisions',
+        'create_revisions',
+        'approve_revisions',
+        'manage_reallocations',
+        'view_related_registrations',
     ],
 
     /*

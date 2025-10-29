@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use App\Enums\ContractRevisionTypeEnum;
+use App\Enums\RecordStatusEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContractRevision extends Model
 {
@@ -18,34 +19,33 @@ class ContractRevision extends Model
 
     protected $fillable = [
         'contract_id',
-        'revision_number',
-        'revision_date',
-        'type',
-        'description',
-        'amount_change',
-        'new_total_value',
-        'file_attachment_id',
-        'remarks',
+        'from_sample_id',
+        'to_sample_id',
+        'num_of_samples',
+        'amount_delta',
+        'date',
+        'year',
+        'notes',
+        'status',
         'created_by',
         'updated_by',
     ];
 
     protected $casts = [
-        'revision_date' => 'date',
-        'amount_change' => 'decimal:2',
-        'new_total_value' => 'decimal:2',
-        'type' => ContractRevisionTypeEnum::class,
+        'status' => RecordStatusEnum::class,
+        'date' => 'date',
+        'year' => 'integer',
+        'num_of_samples' => 'integer',
+        'amount_delta' => 'decimal:2',
     ];
 
     /*
     |--------------------------------------------------------------------------
-    | Boot
+    | Boot events for audit fields
     |--------------------------------------------------------------------------
     */
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
         static::creating(function ($model) {
             if (Auth::check()) {
                 $model->created_by = Auth::id();
@@ -70,7 +70,7 @@ class ContractRevision extends Model
         return LogOptions::defaults()
             ->useLogName('contract.revision')
             ->logFillable()
-            ->setDescriptionForEvent(fn (string $eventName) => "Contract revision has been {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Contract revision record has been {$eventName}");
     }
 
     /*
@@ -78,45 +78,97 @@ class ContractRevision extends Model
     | Relationships
     |--------------------------------------------------------------------------
     */
-    public function contract()
+    public function contract(): BelongsTo
     {
-        return $this->belongsTo(Contract::class);
+        return $this->belongsTo(Contract::class, 'contract_id');
     }
 
-    public function reallocations()
+    public function fromSample(): BelongsTo
     {
-        return $this->hasMany(ContractSampleReallocation::class);
+        return $this->belongsTo(ContractSample::class, 'from_sample_id');
     }
 
-    public function fileAttachment()
+    public function toSample(): BelongsTo
     {
-        return $this->belongsTo(FileAttachment::class, 'file_attachment_id');
+        return $this->belongsTo(ContractSample::class, 'to_sample_id');
     }
 
-    public function createdBy()
+    public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedBy()
+    public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | Scopes
     |--------------------------------------------------------------------------
     */
-    public function getChangeLabelAttribute(): string
+    public function scopeActive($query)
     {
-        return $this->amount_change >= 0
-            ? '+' . number_format($this->amount_change, 2, ',', '.') . ' €'
-            : number_format($this->amount_change, 2, ',', '.') . ' €';
+        return $query->where('status', RecordStatusEnum::Active);
     }
 
-    public function getNewTotalFormattedAttribute(): string
+    public function scopeInactive($query)
     {
-        return number_format($this->new_total_value, 2, ',', '.') . ' €';
+        return $query->where('status', RecordStatusEnum::Inactive);
+    }
+
+    public function scopeByYear($query, int $year)
+    {
+        return $query->where('year', $year);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors & Helpers
+    |--------------------------------------------------------------------------
+    */
+    public function getStatusLabelAttribute(): string
+    {
+        return $this->status?->getLabel() ?? '-';
+    }
+
+    public function getDisplayLabelAttribute(): string
+    {
+        $from = $this->fromSample?->name ?? '-';
+        $to = $this->toSample?->name ?? '-';
+        return "Από {$from} ➜ Σε {$to}";
+    }
+
+    public function getFormattedAmountDeltaAttribute(): string
+    {
+        if (is_null($this->amount_delta)) {
+            return '-';
+        }
+
+        $formatted = number_format(abs($this->amount_delta), 2) . ' €';
+        return $this->amount_delta >= 0 ? "+{$formatted}" : "-{$formatted}";
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Business Logic Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Ελέγχει αν η αναδιανομή είναι ισορροπημένη (ίδιο contract_id)
+     */
+    public function belongsToSameContract(): bool
+    {
+        return $this->fromSample?->contract_id === $this->toSample?->contract_id;
+    }
+
+    /**
+     * Υπολογίζει την καθαρή μεταβολή ποσότητας (με πρόσημο)
+     */
+    public function getNetSampleChange(): int
+    {
+        return $this->num_of_samples ?? 0;
     }
 }
