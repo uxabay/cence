@@ -79,12 +79,21 @@ class ContractOverview extends Page implements HasTable
                     ->map(function ($samples) use ($from, $to) {
                         $category = $samples->first()->category;
 
+                        // Forecasted
                         $forecastedSamples = $samples->sum('net_forecasted_samples');
                         $forecastedAmount  = $samples->sum('net_forecasted_amount');
 
+                        // Actual samples (existing logic)
                         $actualSamples = $samples->sum(fn ($s) => $s->getActualSamples($from, $to));
-                        $actualAmount  = $samples->sum(fn ($s) => $s->getActualAmount($from, $to));
 
+                        // NEW: Actual amount from registrations.calculated_total
+                        $actualAmount = \App\Models\Registration::query()
+                            ->whereIn('contract_sample_id', $samples->pluck('id'))
+                            ->active()
+                            ->betweenDates($from, $to)
+                            ->sum('calculated_total');
+
+                        // Progress
                         $progress = $forecastedAmount > 0
                             ? round(($actualAmount / $forecastedAmount) * 100, 1)
                             : 0;

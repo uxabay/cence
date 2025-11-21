@@ -33,6 +33,8 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Schemas\Components\Utilities\Get;
+
 
 class SamplesRelationManager extends RelationManager
 {
@@ -47,8 +49,10 @@ class SamplesRelationManager extends RelationManager
                 Section::make('Στοιχεία Δείγματος Σύμβασης')
                     ->icon('heroicon-o-beaker')
                     ->schema([
+
                         Fieldset::make()
                             ->schema([
+
                                 Select::make('contract_sample_category_id')
                                     ->label('Κατηγορία Δείγματος')
                                     ->options(fn () => ContractSampleCategory::query()
@@ -61,16 +65,16 @@ class SamplesRelationManager extends RelationManager
                                     ->columnSpan(1),
 
                                 TextInput::make('name')
-                                    ->label('Είδος Σύμβασης')
-                                    ->placeholder('π.χ. Αρχική, Τροποποιητική 1, Τελική')
-                                    ->helperText('Δηλώστε αν πρόκειται για αρχική ή τροποποιητική σύμβαση.')
+                                    ->label('Τίτλος Δείγματος')
+                                    ->placeholder('π.χ. Αρχική Σύμβαση, Τροποποιητική 1')
+                                    ->helperText('Ο τίτλος της γραμμής σύμβασης.')
                                     ->required()
                                     ->columnSpan(1),
 
                                 Toggle::make('is_master')
-                                    ->label('Κύρια')
+                                    ->label('Κύρια Γραμμή')
                                     ->inline(false)
-                                    ->helperText('Ενεργοποιήστε αν πρόκειται για την κύρια γραμμή της σύμβασης.')
+                                    ->helperText('Η κύρια γραμμή χρησιμοποιείται ως σημείο αναφοράς σε ορισμένες συμβάσεις.')
                                     ->columnSpan(1),
 
                                 TextInput::make('year')
@@ -78,29 +82,73 @@ class SamplesRelationManager extends RelationManager
                                     ->numeric()
                                     ->default(now()->year)
                                     ->columnSpan(1),
+
                             ])
                             ->columnSpanFull()
                             ->columns(2),
 
+
+                        Fieldset::make('Τιμολόγηση & Υπολογισμός')
+                            ->schema([
+
+                                Select::make('cost_calculation_type')
+                                    ->label('Τύπος Κόστους')
+                                    ->options([
+                                        'fix'      => 'Σταθερή Τιμή',
+                                        'variable' => 'Με βάση Αναλύσεις',
+                                    ])
+                                    ->required()
+                                    ->default('fix')
+                                    ->columnSpan(1),
+
+                                TextInput::make('max_analyses')
+                                    ->label('Μέγιστο Όριο Αναλύσεων')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->visible(fn (Get $get) => $get('cost_calculation_type') === 'variable')
+                                    ->helperText('Αν ο αριθμός αναλύσεων υπερβεί το όριο, εφαρμόζεται η σταθερή τιμή.')
+                                    ->columnSpan(1),
+
+                                TextInput::make('price')
+                                    ->label('Τιμή Δείγματος (€)')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->live(onBlur: true)
+                                    ->required()
+                                    ->afterStateUpdated(
+                                        fn ($set, $get) =>
+                                            $set('forecasted_amount',
+                                                round(
+                                                    ($get('forecasted_samples') ?? 0) * ($get('price') ?? 0),
+                                                    2
+                                                )
+                                            )
+                                    )
+                                    ->columnSpan(1),
+
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
+
+
                         Fieldset::make('Ποσότητες & Ποσά')
                             ->schema([
+
                                 TextInput::make('forecasted_samples')
                                     ->label('Προβλεπόμενα Δείγματα')
                                     ->numeric()
                                     ->default(0)
                                     ->live(onBlur: true)
                                     ->required()
-                                    ->columnSpan(1),
-
-                                TextInput::make('price')
-                                    ->label('Τιμή (€)')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(fn ($set, $get) =>
-                                        $set('forecasted_amount', round($get('forecasted_samples') * $get('price'), 2))
+                                    ->afterStateUpdated(
+                                        fn ($set, $get) =>
+                                            $set('forecasted_amount',
+                                                round(
+                                                    ($get('forecasted_samples') ?? 0) * ($get('price') ?? 0),
+                                                    2
+                                                )
+                                            )
                                     )
-                                    ->required()
                                     ->columnSpan(1),
 
                                 TextInput::make('forecasted_amount')
@@ -111,8 +159,9 @@ class SamplesRelationManager extends RelationManager
                                     ->columnSpan(1),
 
                             ])
-                            ->columnSpanFull()
-                            ->columns(3),
+                            ->columns(2)
+                            ->columnSpanFull(),
+
 
                         Select::make('labCategories')
                             ->label('Κατηγορίες Εργαστηρίου')
@@ -124,7 +173,8 @@ class SamplesRelationManager extends RelationManager
                             ->preload()
                             ->searchable()
                             ->columnSpanFull()
-                            ->hint('Συνδέστε μία ή περισσότερες κατηγορίες δειγμάτων εργαστηρίου.'),
+                            ->hint('Συνδέστε μία ή περισσότερες κατηγορίες εργαστηριακών δειγμάτων.'),
+
 
                         Textarea::make('remarks')
                             ->label('Παρατηρήσεις')
@@ -138,10 +188,12 @@ class SamplesRelationManager extends RelationManager
                                 RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
                             ])
                             ->default(RecordStatusEnum::Active->value)
-                            ->required(),
+                            ->required()
+                            ->columnSpan(1),
+
                     ])
-                    ->columnSpanFull()
-                    ->columns(2),
+                    ->columns(2)
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -149,29 +201,29 @@ class SamplesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Διαχείριση Δειγμάτων')
+            ->heading('Διαχείριση Δειγμάτων Σύμβασης')
 
             ->recordTitleAttribute('display_label')
-            ->modifyQueryUsing(fn (Builder $query) =>
-                $query->withoutGlobalScopes([SoftDeletingScope::class])
+
+            ->modifyQueryUsing(
+                fn (Builder $query) => $query->withoutGlobalScopes([SoftDeletingScope::class])
             )
 
             ->groups([
                 Group::make('name')
+                    ->label('Είδος Δείγματος')
                     ->collapsible()
-                    ->label('Είδος Σύμβασης')
-                    ->getTitleFromRecordUsing(fn ($record) => "{$record->name}"),
+                    ->getTitleFromRecordUsing(fn ($record) => $record->name),
 
                 Group::make('category.name')
-                    ->label('Κατηγορία Δειγμάτων')
-                    ->getTitleFromRecordUsing(fn ($record) => "{$record->category->name}"),
+                    ->label('Κατηγορία Εργαστηρίου')
+                    ->getTitleFromRecordUsing(fn ($record) => $record->category?->name),
             ])
             ->defaultGroup('name')
 
             ->columns([
                 TextColumn::make('name')
-                    ->label('Είδος Σύμβασης')
-                    ->tooltip(fn ($record) => 'Αρχική, Τροποποιητική ή Τελική σύμβαση')
+                    ->label('Είδος Δείγματος')
                     ->weight('medium')
                     ->color('primary')
                     ->sortable()
@@ -182,28 +234,55 @@ class SamplesRelationManager extends RelationManager
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('year')
-                    ->label('Έτος')
-                    ->sortable()
-                    ->alignCenter(),
-
                 TextColumn::make('forecasted_samples')
                     ->label('Πλήθος')
                     ->numeric()
-                    ->sortable()
-                    ->alignRight(),
+                    ->alignRight()
+                    ->sortable(),
 
                 TextColumn::make('price')
                     ->label('Τιμή (€)')
                     ->numeric(decimalPlaces: 2)
-                    ->sortable()
-                    ->alignRight(),
+                    ->alignRight()
+                    ->sortable(),
 
                 TextColumn::make('forecasted_amount')
-                    ->label('Ποσό (€)')
+                    ->label('Προϋπολογισμός (€)')
                     ->numeric(decimalPlaces: 2)
+                    ->alignRight()
+                    ->sortable(),
+
+                TextColumn::make('cost_calculation_type')
+                    ->label('Τύπος Κόστους')
+                    ->badge()
                     ->sortable()
-                    ->alignRight(),
+                    ->formatStateUsing(function ($state) {
+                        return match ($state) {
+                            'fix' => 'Σταθερή Τιμή',
+                            'variable' => 'Με βάση αναλύσεις',
+                            default => '-',
+                        };
+                    })
+                    ->color(function ($state) {
+                        return match ($state) {
+                            'fix' => 'gray',
+                            'variable' => 'blue',
+                            default => 'gray',
+                        };
+                    })
+                    ->icon(function ($state) {
+                        return match ($state) {
+                            'fix' => 'heroicon-o-lock-closed',
+                            'variable' => 'heroicon-o-beaker',
+                            default => null,
+                        };
+                    }),
+
+                TextColumn::make('max_analyses')
+                    ->label('Όριο Αναλύσεων')
+                    ->sortable()
+                    ->alignCenter()
+                    ->formatStateUsing(fn ($state) => $state ?: '—'),
 
                 TextColumn::make('status')
                     ->label('Κατάσταση')
@@ -212,20 +291,23 @@ class SamplesRelationManager extends RelationManager
                     ->icon(fn ($state) => $state?->getIcon())
                     ->sortable(),
             ])
+
             ->filters([
                 TrashedFilter::make(),
             ])
+
             ->headerActions([
                 CreateAction::make()
-                    ->label('Προσθήκη Κατηγορίας')
+                    ->label('Προσθήκη Δείγματος')
                     ->icon('heroicon-o-plus-circle')
-                    ->modalHeading('Νέα Κατηγορία Δειγμάτων')
+                    ->modalHeading('Νέο Δείγμα Σύμβασης')
                     ->modalSubmitActionLabel('Αποθήκευση')
                     ->modalCancelActionLabel('Ακύρωση')
-                    ->createAnotherAction(fn (Action $action) =>
-                        $action->label('Αποθήκευση & Προσθήκη νέας')
+                    ->createAnotherAction(
+                        fn (Action $action) => $action->label('Αποθήκευση & Προσθήκη νέου')
                     ),
             ])
+
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()->label('Προβολή')->icon('heroicon-o-eye'),
@@ -235,6 +317,7 @@ class SamplesRelationManager extends RelationManager
                     RestoreAction::make(),
                 ])->icon('heroicon-o-ellipsis-vertical'),
             ])
+
             ->pushToolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
@@ -243,4 +326,5 @@ class SamplesRelationManager extends RelationManager
                 ]),
             ]);
     }
+
 }

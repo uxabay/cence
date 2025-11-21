@@ -176,11 +176,20 @@ class Contract extends Model
         $actualAmount = 0;
 
         foreach ($grouped as $categorySamples) {
+
+            // ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΑ
             $forecastedSamples += $categorySamples->sum('net_forecasted_samples');
             $forecastedAmount  += $categorySamples->sum('net_forecasted_amount');
 
+            // ΠΡΑΓΜΑΤΟΠΟΙΗΘΕΝΤΑ ΔΕΙΓΜΑΤΑ (ίδια λογική όπως πριν)
             $actualSamples += $categorySamples->sum(fn ($s) => $s->getActualSamples($from, $to));
-            $actualAmount  += $categorySamples->sum(fn ($s) => $s->getActualAmount($from, $to));
+
+            // ΠΡΑΓΜΑΤΟΠΟΙΗΘΕΝΤΑ ΠΟΣΑ (ΝΕΑ ΛΟΓΙΚΗ)
+            $actualAmount += \App\Models\Registration::query()
+                ->whereIn('contract_sample_id', $categorySamples->pluck('id'))
+                ->active()
+                ->betweenDates($from, $to)
+                ->sum('calculated_total');
         }
 
         return [
@@ -190,7 +199,6 @@ class Contract extends Model
             'actual_amount'      => $actualAmount,
         ];
     }
-
 
     // Compatibility for Filament
     public function getStatsAttribute(): array

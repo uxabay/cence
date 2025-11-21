@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Filament\Resources\Registrations\Pages;
+namespace App\Filament\Resources\LabAnalysisPackages\Pages;
 
-use App\Filament\Resources\Registrations\RegistrationResource;
+use App\Filament\Resources\LabAnalysisPackages\LabAnalysisPackageResource;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Actions\Action;
 
-class CreateRegistration extends CreateRecord
+class CreateLabAnalysisPackage extends CreateRecord
 {
-    protected static string $resource = RegistrationResource::class;
-    protected static null|string $title = 'Δημιουργία Πρωτοκόλλου';
-
+    protected static string $resource = LabAnalysisPackageResource::class;
+    protected static null|string $title = 'Δημιουργία Πακέτου Αναλύσεων';
     protected static null|string $breadcrumb = 'Δημιουργία';
 
     protected function getCreateFormAction(): Action
@@ -26,4 +25,5 @@ class CreateRegistration extends CreateRecord
         return parent::getCreateAnotherFormAction()
             ->label('Αποθήκευση & Προσθήκη νέου'); // ✅ Your custom Greek label
     }
+
 }

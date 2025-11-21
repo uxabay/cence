@@ -5,6 +5,9 @@ namespace App\Filament\Resources\Registrations\Schemas;
 use App\Enums\RecordStatusEnum;
 use App\Models\ContractSample;
 use App\Models\Registration;
+use App\Models\Contract;
+use Illuminate\Support\HtmlString;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -39,28 +42,74 @@ class RegistrationForm
                             ->native(false)
                             ->closeOnDateSelection()
                             ->live()
+                            // ✅ Αν αλλάξει ημερομηνία → ενημέρωση έτους
                             ->afterStateUpdated(function ($state, callable $set) {
                                 if (filled($state)) {
-                                    $set('year', \Illuminate\Support\Carbon::parse($state)->year);
+                                    $set('year', Carbon::parse($state)->year);
+                                }
+                            })
+                            // ✅ Αν ανοίγει υπάρχουσα εγγραφή → φέρνουμε το σωστό έτος
+                            ->afterStateHydrated(function ($state, callable $set) {
+                                if (filled($state)) {
+                                    $set('year', Carbon::parse($state)->year);
                                 }
                             }),
 
                         TextInput::make('registration_number')
                             ->label('Αριθμός Πρωτοκόλλου')
                             ->required()
-                            ->maxLength(50)
-                            ->placeholder('π.χ. Π-045/2025')
-                            ->columnSpan(1),
+                            ->maxLength(20)
+                            ->placeholder('π.χ. 00024/2025')
+                            ->columnSpan(1)
+                            ->reactive()
+                            ->default(function (callable $get) {
+                                $year = $get('year') ?? now()->year;
+
+                                // Βρίσκουμε το τελευταίο πρωτόκολλο για το συγκεκριμένο έτος
+                                $last = \App\Models\Registration::where('year', $year)
+                                    ->latest('id')
+                                    ->value('registration_number');
+
+                                if (! $last) {
+                                    return sprintf('%05d/%s', 1, $year);
+                                }
+
+                                // Εξάγουμε τον αριθμό (πριν από το "/")
+                                if (preg_match('/^(\d{1,})\//', $last, $matches)) {
+                                    $nextNum = (int) $matches[1] + 1;
+                                    return sprintf('%05d/%s', $nextNum, $year);
+                                }
+
+                                // Fallback
+                                return sprintf('%05d/%s', 1, $year);
+                            })
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                $year = $get('year') ?? now()->year;
+
+                                if (blank($state)) {
+                                    return;
+                                }
+
+                                // Αν ο χρήστης γράψει κάτι όπως "24" ή "24/2025"
+                                if (preg_match('/^(\d{1,})(?:\/(\d{4}))?$/', trim($state), $matches)) {
+                                    $num = str_pad((int) $matches[1], 5, '0', STR_PAD_LEFT);
+                                    $inputYear = $matches[2] ?? $year;
+                                    $formatted = sprintf('%s/%s', $num, $inputYear);
+                                    $set('registration_number', $formatted);
+                                }
+                            }),
 
                         TextInput::make('year')
                             ->label('Έτος')
                             ->numeric()
                             ->readOnly()
                             ->dehydrated()
-                            ->columnSpan(1)
-                            ->suffixIcon('heroicon-o-calendar'),
+                            ->default(today()->year) // ✅ αρχική τιμή
+                            ->suffixIcon('heroicon-o-calendar')
+                            ->columnSpan(1),
                     ])
                     ->columnSpanFull(),
+
 
                 /*
                 |--------------------------------------------------------------------------
@@ -140,6 +189,7 @@ class RegistrationForm
                     ->columns(3)
                     ->schema([
 
+                        // 🟦 Πελάτης
                         Select::make('customer_id')
                             ->label('Πελάτης')
                             ->relationship('customer', 'name')
@@ -147,8 +197,10 @@ class RegistrationForm
                             ->preload()
                             ->required()
                             ->columnSpan(1)
-                            ->placeholder('Επιλέξτε πελάτη...'),
+                            ->placeholder('Επιλέξτε πελάτη...')
+                            ->reactive(),
 
+                        // 🟦 Σύμβαση
                         Select::make('contract_id')
                             ->label('Σύμβαση')
                             ->relationship('contract', 'title')
@@ -159,6 +211,7 @@ class RegistrationForm
                             ->placeholder('Προαιρετική επιλογή...')
                             ->columnSpan(1),
 
+                        // 🟦 Κατηγορία Δειγμάτων Σύμβασης
                         Select::make('contract_sample_id')
                             ->label('Κατηγορία Δειγμάτων Σύμβασης')
                             ->reactive()
@@ -168,7 +221,7 @@ class RegistrationForm
                                     return [];
                                 }
 
-                                return ContractSample::query()
+                                return \App\Models\ContractSample::query()
                                     ->where('contract_id', $contractId)
                                     ->where('is_master', true)
                                     ->with('category')
@@ -187,17 +240,12 @@ class RegistrationForm
                                 $labCat = $get('lab_sample_category_id');
                                 if (!$labCat) return;
 
-                                // Έλεγχος συμβατότητας μεταξύ labCategory και contractSample
-                                $sample = ContractSample::with('labCategories')
-                                    ->find($state);
-
-                                $compatible = $sample?->labCategories
-                                    ?->pluck('id')
-                                    ?->contains($labCat);
+                                $sample = \App\Models\ContractSample::with('labCategories')->find($state);
+                                $compatible = $sample?->labCategories?->pluck('id')?->contains($labCat);
 
                                 if (!$compatible) {
                                     $set('contract_sample_id', null);
-                                    Notification::make()
+                                    \Filament\Notifications\Notification::make()
                                         ->title('Μη συμβατή επιλογή')
                                         ->body('Η επιλεγμένη κατηγορία δειγμάτων σύμβασης δεν περιλαμβάνει την κατηγορία δειγμάτων του εργαστηρίου.')
                                         ->danger()
@@ -207,6 +255,44 @@ class RegistrationForm
                             ->placeholder('Επιλέξτε κατηγορία δειγμάτων σύμβασης...')
                             ->helperText('Εμφανίζονται μόνο οι master κατηγορίες της σύμβασης')
                             ->columnSpan(1),
+
+
+                        // 🟧 Info box – Πληροφορίες για τη σύμβαση του πελάτη
+                        TextEntry::make('customer_contract_info')
+                            ->label('Πληροφορίες Σύμβασης')
+                            ->columnSpanFull()
+                            ->html() // ✅ επιτρέπει HTML rendering
+                            ->color('gray')
+                            ->default(function (callable $get): HtmlString {
+                                $customerId = $get('customer_id');
+
+                                if (!$customerId) {
+                                    return new HtmlString('<em>Δεν έχει επιλεγεί πελάτης.</em>');
+                                }
+
+                                $contract = Contract::where('lab_customer_id', $customerId)
+                                    ->where('status', RecordStatusEnum::Active)
+                                    ->orderByDesc('date_start')
+                                    ->first();
+
+                                if (!$contract) {
+                                    return new HtmlString('<span class="text-red-700">Ο πελάτης δεν έχει ενεργή σύμβαση.</span>');
+                                }
+
+                                // Προαιρετικά, κάνε το clickable:
+                                $url = route('filament.admin.resources.contracts.view', $contract->id);
+
+                                return new HtmlString(sprintf(
+                                    '<span class="text-green-800 font-medium">Ενεργή σύμβαση: </span>
+                                    <a href="%s" target="_blank" class="text-primary-600 underline hover:text-primary-800">%s – %s</a><br>
+                                    <em>Διάρκεια: </em> %s έως %s',
+                                    e($url),
+                                    e($contract->contract_number ?? '—'),
+                                    e($contract->title ?? ''),
+                                    e($contract->date_start?->format('d/m/Y') ?? '-'),
+                                    e($contract->date_end?->format('d/m/Y') ?? '-')
+                                ));
+                            }),
                     ])
                     ->columnSpanFull(),
 

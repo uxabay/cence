@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RecordStatusEnum;
+use App\Enums\CostCalculationTypeEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -42,6 +43,7 @@ class ContractSample extends Model
         'forecasted_samples' => 'integer',
         'price' => 'decimal:2',
         'forecasted_amount' => 'decimal:2',
+        'cost_calculation_type' => CostCalculationTypeEnum::class, // ← ΝΕΟ
     ];
 
     /*
@@ -182,18 +184,13 @@ class ContractSample extends Model
 
     public function getActualAmount(?string $from = null, ?string $to = null): float
     {
-        $price = $this->is_master
-            ? $this->price
-            : ($this->contract->samples()->where('is_master', true)->value('price') ?? $this->price);
-
-        $totalSamples = \App\Models\Registration::query()
+        return \App\Models\Registration::query()
             ->where('contract_sample_id', $this->id)
             ->active()
             ->betweenDates($from, $to)
-            ->sum('total_samples');
-
-        return round($totalSamples * $price, 2);
+            ->sum('calculated_total');
     }
+
 
     // Accessors for Filament compatibility
     public function getActualSamplesAttribute(): int
