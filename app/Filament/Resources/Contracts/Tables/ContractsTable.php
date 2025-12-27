@@ -22,6 +22,7 @@ use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\ActionColor;
 use Filament\Support\Facades\FilamentView;
 use App\Enums\RecordStatusEnum;
+use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\Contracts\Pages\ContractOverview;
 
 class ContractsTable
@@ -105,6 +106,11 @@ class ContractsTable
                         ->icon('heroicon-o-chart-bar')
                         ->url(fn ($record) => ContractOverview::getUrl(['record' => $record]))
                         ->openUrlInNewTab(false),
+
+                    Action::make('activities')
+                        ->label('Δραστηριότητα')
+                        ->icon('heroicon-o-document')
+                        ->url(fn ($record) => ContractResource::getUrl('activities', ['record' => $record])),
 
                     EditAction::make()->label('Επεξεργασία')->icon('heroicon-o-pencil-square'),
                     DeleteAction::make()->label('Διαγραφή'),

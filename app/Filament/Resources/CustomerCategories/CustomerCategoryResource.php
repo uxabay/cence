@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
@@ -23,6 +24,8 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\FontWeight;
 
 class CustomerCategoryResource extends Resource
 {
@@ -39,115 +42,170 @@ class CustomerCategoryResource extends Resource
     {
         return $schema
             ->components([
-                Fieldset::make('Βασικά Στοιχεία')
+                // Χρησιμοποιούμε Section αντί για Fieldset, καθώς έχει καλύτερη οπτική εμφάνιση
+                Section::make('Βασικές Πληροφορίες Κατηγορίας')
+                    ->description('Επεξεργασία του ονόματος, της περιγραφής και της κατάστασης.')
+                    ->icon('heroicon-o-pencil-square') // Εικονίδιο για επαγγελματική εμφάνιση
+                    ->compact()
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Όνομα')
-                            ->required()
-                            ->maxLength(255)
-                            ->autofocus()
-                            ->placeholder('Πληκτρολογήστε το όνομα της κατηγορίας'),
+                        // Inner Grid: Χωρίζει Όνομα και Κατάσταση σε 2 στήλες
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Όνομα')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->autofocus()
+                                    ->placeholder('Πληκτρολογήστε το όνομα'), // Χωρίς hint
 
+                                Select::make('status')
+                                    ->label('Κατάσταση')
+                                    ->options(CustomerCategoryStatus::class)
+                                    ->default('active')
+                                    ->required()
+                                    ->native(false)
+                                    ->placeholder('Ενεργή ή ανενεργή'), // Χωρίς helperText/hint
+                            ]),
+
+                        // Περιγραφή: Πάντα σε πλήρες πλάτος
                         Textarea::make('description')
                             ->label('Περιγραφή')
                             ->placeholder('Προαιρετική περιγραφή')
                             ->rows(3)
                             ->maxLength(500)
                             ->columnSpanFull(),
-
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options(CustomerCategoryStatus::class)
-                            ->default('active')
-                            ->required()
-                            ->native(false)
-                            ->helperText('Ορίστε αν η κατηγορία είναι ενεργή ή ανενεργή.'),
                     ])
-                    ->columns(2)
+                    ->columns(1) // Η κύρια ενότητα λειτουργεί σε μία στήλη μέσα στο modal
                     ->columnSpanFull(),
             ]);
     }
 
+    /**
+     * Infolist schema for a Modal View, structured in a clean 2:1 column layout.
+     * The EditAction is moved to the header of the primary Section for better UX.
+     */
     public static function infolist(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Βασικές Πληροφορίες')
+                // Main Grid Container: Creates a 2:1 column layout (2/3 width for main, 1/3 for sidebar)
+                Grid::make(3)
+                    ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('name')
-                            ->label('Όνομα Κατηγορίας')
-                            ->icon('heroicon-o-rectangle-stack')
-                            ->weight('medium')
-                            ->color('primary'),
 
-                        TextEntry::make('description')
-                            ->label('Περιγραφή')
-                            ->placeholder('-')
-                            ->columnSpanFull()
-                            ->markdown()
-                            ->prose(),
-                    ])
-                    ->columns(2),
+                        // === LEFT COLUMN (2/3 width) - Primary and Audit Data ===
+                        Grid::make(1) // Single column container for main sections
+                            ->columnSpan(2) // Span 2 out of 3 columns
+                            ->schema([
 
-                Section::make('Κατάσταση & Πληροφορίες')
-                    ->schema([
-                        TextEntry::make('status')
-                            ->label('Κατάσταση')
-                            ->badge()
-                            ->color(fn ($state) => $state->value === 'active' ? 'success' : 'gray')
-                            ->icon(fn ($state) => $state->value === 'active' ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'),
+                                // 1. ΒΑΣΙΚΕΣ ΠΛΗΡΟΦΟΡΙΕΣ (PRIMARY DETAILS)
+                                Section::make('Βασικές Πληροφορίες')
+                                    ->description('Όνομα και λεπτομερής περιγραφή της κατηγορίας.')
+                                    ->icon('heroicon-o-tag')
+                                    ->compact()
+                                    ->headerActions([
+                                        // ΤΟ ΚΟΥΜΠΙ ΕΠΕΞΕΡΓΑΣΙΑΣ ΜΕΤΑΚΙΝΗΘΗΚΕ ΕΔΩ
+                                        Actions\EditAction::make('edit')
+                                            ->label('Επεξεργασία')
+                                            ->icon('heroicon-o-pencil-square')
+                                            ->color('primary'),
+                                    ])
+                                    ->schema([
+                                        // Inner grid for better label alignment
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextEntry::make('name')
+                                                    ->label('Όνομα Κατηγορίας')
+                                                    ->weight(FontWeight::SemiBold)
+                                                    ->color('primary'),
+                                            ]),
 
-                        TextEntry::make('customers_count')
-                            ->label('Σύνολο Πελατών')
-                            ->counts('customers')
-                            ->badge()
-                            ->color('info')
-                            ->icon('heroicon-o-users')
-                            ->placeholder('0'),
+                                        TextEntry::make('description')
+                                            ->label('Περιγραφή')
+                                            ->placeholder('Δεν έχει καταχωρηθεί περιγραφή.')
+                                            ->columnSpanFull()
+                                            ->markdown()
+                                            ->prose(),
+                                    ]),
 
-                        TextEntry::make('created_at')
-                            ->label('Δημιουργήθηκε')
-                            ->dateTime('d/m/Y H:i')
-                            ->since()
-                            ->icon('heroicon-o-calendar-days'),
+                                // 3. ΙΣΤΟΡΙΚΟ ΚΑΤΑΓΡΑΦΩΝ (AUDIT LOGS)
+                                Section::make('Ιστορικό Καταγραφών')
+                                    ->description('Πληροφορίες δημιουργίας και τελευταίας ενημέρωσης.')
+                                    ->icon('heroicon-o-clock')
+                                    ->compact()
+                                    ->schema([
+                                        TextEntry::make('createdBy.name')
+                                            ->label('Δημιουργήθηκε από')
+                                            ->placeholder('-')
+                                            ->icon('heroicon-o-user'),
 
-                        TextEntry::make('updated_at')
-                            ->label('Ενημερώθηκε')
-                            ->dateTime('d/m/Y H:i')
-                            ->since()
-                            ->icon('heroicon-o-arrow-path'),
-                    ])
-                    ->columns(2),
+                                        TextEntry::make('updatedBy.name')
+                                            ->label('Τελευταία ενημέρωση από')
+                                            ->placeholder('-')
+                                            ->icon('heroicon-o-user-circle'),
 
-                Actions\EditAction::make('edit')
-                    ->label('Επεξεργασία')
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('primary'),
+                                        TextEntry::make('deleted_at')
+                                            ->label('Ημερομηνία Διαγραφής')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->color('danger')
+                                            ->visible(fn (CustomerCategory $record): bool => $record->trashed())
+                                            ->icon('heroicon-o-trash'),
+                                    ])
+                                    ->columns(2),
+                            ]),
 
-                Section::make('Ιστορικό Καταγραφών')
-                    ->schema([
-                        TextEntry::make('createdBy.name')
-                            ->label('Δημιουργήθηκε από')
-                            ->placeholder('-')
-                            ->icon('heroicon-o-user'),
+                        // === RIGHT COLUMN (1/3 width) - Status and Meta Data ===
+                        Grid::make(1)
+                            ->columnSpan(1)
+                            ->schema([
+                                // 2. ΚΑΤΑΣΤΑΣΗ & ΠΛΗΡΟΦΟΡΙΕΣ (STATUS & META)
+                                Section::make('Κατάσταση & Μεταδεδομένα')
+                                    ->description('Διαχειριστικές πληροφορίες.')
+                                    ->icon('heroicon-o-information-circle')
+                                    ->compact()
+                                    ->schema([
+                                        TextEntry::make('status')
+                                            ->label('Κατάσταση')
+                                            ->badge()
+                                            ->color(fn ($state): string => match ($state->value) {
+                                                'active' => 'success',
+                                                default => 'gray',
+                                            })
+                                            ->icon(fn ($state): string => match ($state->value) {
+                                                'active' => 'heroicon-o-check-circle',
+                                                default => 'heroicon-o-x-circle',
+                                            }),
 
-                        TextEntry::make('updatedBy.name')
-                            ->label('Τελευταία ενημέρωση από')
-                            ->placeholder('-')
-                            ->icon('heroicon-o-user-circle'),
+                                        TextEntry::make('customers_count')
+                                            ->label('Σύνολο Πελατών')
+                                            ->counts('customers')
+                                            ->badge()
+                                            ->color('info')
+                                            ->icon('heroicon-o-users')
+                                            ->placeholder('0'),
+                                    ])
+                                    ->columns(1), // Force 1 column within the sidebar for stacking
 
-                        TextEntry::make('deleted_at')
-                            ->label('Ημερομηνία Διαγραφής')
-                            ->dateTime('d/m/Y H:i')
-                            ->color('danger')
-                            ->visible(fn (CustomerCategory $record): bool => $record->trashed())
-                            ->icon('heroicon-o-trash'),
-                    ])
-                    ->columns(2)
-                    ->columnSpanFull(),
+                                // Ενότητα Ημερομηνιών (Separate section for clean stacking)
+                                Section::make('Ημερομηνίες')
+                                    ->icon('heroicon-o-calendar')
+                                    ->compact()
+                                    ->schema([
+                                        TextEntry::make('created_at')
+                                            ->label('Δημιουργήθηκε')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->since()
+                                            ->icon('heroicon-o-calendar-days'),
 
-
-
+                                        TextEntry::make('updated_at')
+                                            ->label('Ενημερώθηκε')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->since()
+                                            ->icon('heroicon-o-arrow-path'),
+                                    ])
+                                    ->columns(1),
+                            ]),
+                    ]),
             ]);
     }
 

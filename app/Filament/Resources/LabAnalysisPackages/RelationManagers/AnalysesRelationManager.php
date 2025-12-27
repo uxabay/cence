@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LabAnalysisPackages\RelationManagers;
 
 use App\Models\LabAnalysis;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\AttachAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -46,7 +47,6 @@ class AnalysesRelationManager extends RelationManager
                 TextColumn::make('pivot.analysis_price')
                     ->label('Τιμή Snapshot (€)')
                     ->money('EUR')
-                    ->sortable()
                     ->weight('medium'),
 
                 // Current analysis price
@@ -100,23 +100,25 @@ class AnalysesRelationManager extends RelationManager
 
             ])
             ->recordActions([
-                EditAction::make()
-                    ->label('Επεξεργασία Snapshot')
-                    ->modalHeading('Επεξεργασία Snapshot Ανάλυσης')
-                    ->schema([
-                        TextInput::make('analysis_name')
-                            ->label('Όνομα Snapshot')
-                            ->required(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Επεξεργασία Snapshot')
+                        ->modalHeading('Επεξεργασία Snapshot Ανάλυσης')
+                        ->schema([
+                            TextInput::make('analysis_name')
+                                ->label('Όνομα Snapshot')
+                                ->required(),
 
-                        TextInput::make('analysis_price')
-                            ->label('Τιμή Snapshot (€)')
-                            ->numeric()
-                            ->required(),
-                    ]),
+                            TextInput::make('analysis_price')
+                                ->label('Τιμή Snapshot (€)')
+                                ->numeric()
+                                ->required(),
+                        ]),
 
-                DetachAction::make()
-                    ->label('Αφαίρεση')
-                    ->icon('heroicon-o-x-mark'),
+                    DetachAction::make()
+                        ->label('Αφαίρεση')
+                        ->icon('heroicon-o-x-mark'),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

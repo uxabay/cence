@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Registration extends Model
 {
@@ -63,13 +63,11 @@ class Registration extends Model
                 $model->updated_by = Auth::id();
             }
 
-            // Υπολογισμός valid samples
+            // valid samples calculation
             $model->total_samples = max(
                 0,
                 ($model->num_samples_received ?? 0) - ($model->not_valid_samples ?? 0)
             );
-
-            // ΝΕΟ: Υπολογισμός κόστους
             $model->calculateCost();
         });
 
@@ -78,17 +76,20 @@ class Registration extends Model
                 $model->updated_by = Auth::id();
             }
 
-            // Υπολογισμός valid samples
+            // valid samples calculation
             $model->total_samples = max(
                 0,
                 ($model->num_samples_received ?? 0) - ($model->not_valid_samples ?? 0)
             );
-
-            // ΝΕΟ: Υπολογισμός κόστους
             $model->calculateCost();
         });
-    }
 
+        static::saved(function ($registration) {
+            app(\App\Services\Contracts\ContractNotificationService::class)
+                ->evaluateRegistration($registration);
+        });
+
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -138,12 +139,11 @@ class Registration extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function analyses(): BelongsToMany
+    public function analyses(): HasMany
     {
-        return $this->belongsToMany(LabAnalysis::class, 'registration_analysis')
-            ->withPivot(['analysis_name', 'analysis_price'])
-            ->withTimestamps();
+        return $this->hasMany(RegistrationAnalysis::class, 'registration_id');
     }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -217,7 +217,7 @@ class Registration extends Model
 
     public function calculateCost(): void
     {
-        // Δεν υπάρχει contract sample → δεν μπορούμε να υπολογίσουμε κόστος
+        // Χωρίς contract sample → δεν υπολογίζουμε τίποτα
         if (!$this->contractSample) {
             $this->calculated_unit_price = null;
             $this->calculated_total = null;
@@ -226,24 +226,24 @@ class Registration extends Model
 
         $sample = $this->contractSample;
 
-        // Βασικές πληροφορίες contract sample
         $price = (float) $sample->price;                // fix price
         $max = (int) $sample->max_analyses;             // threshold
         $isVariable = $sample->cost_calculation_type->value === 'variable';
 
-        // Pivot αναλύσεων που έχουν συνδεθεί
+        // Πλέον analyses = RegistrationAnalysis models
         $analyses = $this->analyses;
         $analysesCount = $analyses->count();
-        $sumAnalyses = $analyses->sum('pivot.analysis_price');
 
-        // Αποθηκεύουμε τον αριθμό αναλύσεων στο πεδίο της βάσης
+        // sum από το RegistrationAnalysis → analysis_price
+        $sumAnalyses = $analyses->sum('analysis_price');
+
+        // αποθηκεύουμε τον αριθμό αναλύσεων
         $this->analyses_count = $analysesCount;
 
         /*
         |--------------------------------------------------------------------------
-        | FIX PRICING
+        | FIX
         |--------------------------------------------------------------------------
-        | Αν η σύμβαση είναι FIX → Χρησιμοποιούμε πάντα το price.
         */
         if (!$isVariable) {
             $this->calculated_unit_price = $price;
@@ -253,20 +253,18 @@ class Registration extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | VARIABLE PRICING (λόγοι)
-        | - η κατηγορία είναι variable
-        | - πρέπει να δούμε αριθμό αναλύσεων
+        | VARIABLE
         |--------------------------------------------------------------------------
         */
 
-        // Κανένας υπολογισμός αν δεν υπάρχουν αναλύσεις → FIX
+        // Χωρίς αναλύσεις → FIX
         if ($analysesCount === 0) {
             $this->calculated_unit_price = $price;
             $this->calculated_total = $price * $this->total_samples;
             return;
         }
 
-        // Αν υπάρχει όριο και ξεπέρασε → FIX
+        // Αν υπάρχει όριο και ξεπεραστεί → FIX
         if ($max > 0 && $analysesCount > $max) {
             $this->calculated_unit_price = $price;
             $this->calculated_total = $price * $this->total_samples;
@@ -275,12 +273,50 @@ class Registration extends Model
 
         /*
         |--------------------------------------------------------------------------
-        | ΕΦΑΡΜΟΓΗ VARIABLE PRICING
+        | VARIABLE – άθροισμα των analysis_price
         |--------------------------------------------------------------------------
-        | - άθροισμα των analysis_price από το pivot
         */
         $this->calculated_unit_price = $sumAnalyses;
         $this->calculated_total = $sumAnalyses * $this->total_samples;
     }
 
+
+    public function getCustomerContractInfoAttribute(): string
+    {
+        $customerId = $this->customer_id;
+
+        if (!$customerId) {
+            return '<em>Δεν έχει επιλεγεί πελάτης.</em>';
+        }
+
+        $contract = \App\Models\Contract::where('lab_customer_id', $customerId)
+            ->where('status', \App\Enums\RecordStatusEnum::Active)
+            ->orderByDesc('date_start')
+            ->first();
+
+        if (!$contract) {
+            return '<span class="text-red-700">Ο πελάτης δεν έχει ενεργή σύμβαση.</span>';
+        }
+
+        $url = route('filament.admin.resources.contracts.view', $contract->id);
+
+        return sprintf(
+            '<span class="text-green-800 font-medium">Ενεργή σύμβαση: </span>
+            <a href="%s" target="_blank" class="text-primary-600 underline hover:text-primary-800">%s – %s</a><br>
+            <em>Διάρκεια: </em> %s έως %s',
+            e($url),
+            e($contract->contract_number ?? '—'),
+            e($contract->title ?? ''),
+            e($contract->date_start?->format('d/m/Y') ?? '-'),
+            e($contract->date_end?->format('d/m/Y') ?? '-')
+        );
+    }
+
+    /**
+     * Business rules
+     */
+    public function canBeDeleted(): bool
+    {
+        return true;
+    }
 }

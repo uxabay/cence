@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class CustomerCategoryPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('view_any_customer_category');
@@ -34,7 +34,8 @@ class CustomerCategoryPolicy
 
     public function delete(AuthUser $authUser, CustomerCategory $customerCategory): bool
     {
-        return $authUser->can('delete_customer_category');
+        return $authUser->can('delete_customer_category')
+            && $customerCategory->canBeDeleted();
     }
 
     public function restore(AuthUser $authUser, CustomerCategory $customerCategory): bool
@@ -44,7 +45,8 @@ class CustomerCategoryPolicy
 
     public function forceDelete(AuthUser $authUser, CustomerCategory $customerCategory): bool
     {
-        return $authUser->can('force_delete_customer_category');
+        return $authUser->can('force_delete_customer_category')
+            && $customerCategory->canBeDeleted();
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool

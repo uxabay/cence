@@ -2,159 +2,264 @@
 
 namespace App\Filament\Resources\Registrations\Schemas;
 
-use App\Enums\RecordStatusEnum;
+use App\Models\Registration;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 
 class RegistrationInfolist
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema
-            ->components([
+        return $schema->components([
 
-                /*
-                |--------------------------------------------------------------------------
-                | ΒΑΣΙΚΑ ΣΤΟΙΧΕΙΑ ΠΡΩΤΟΚΟΛΛΟΥ
-                |--------------------------------------------------------------------------
-                */
-                Section::make('Βασικά Στοιχεία')
-                    ->icon('heroicon-o-document-text')
-                    ->schema([
-                        TextEntry::make('registration_number')
-                            ->label('Αριθμός Πρωτοκόλλου')
-                            ->icon('heroicon-o-document-text')
-                            ->weight('medium')
-                            ->color('primary'),
+            Grid::make(3)
+                ->columnSpanFull()
+                ->schema([
 
-                        TextEntry::make('date')
-                            ->label('Ημερομηνία')
-                            ->date('d/m/Y')
-                            ->icon('heroicon-o-calendar-days'),
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LEFT COLUMN (2/3)
+                    |--------------------------------------------------------------------------
+                    */
+                    Grid::make(1)
+                        ->columnSpan(2)
+                        ->schema([
 
-                        TextEntry::make('year')
-                            ->label('Έτος'),
-                    ])
-                    ->columnSpanFull()
-                    ->columns(3),
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S1 – Στοιχεία Πρωτοκόλλου & Πελάτη
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Στοιχεία Πρωτοκόλλου & Πελάτη')
+                                ->icon('heroicon-o-document-text')
+                                ->compact()
+                                ->schema([
+                                    Grid::make(3)->schema([
+                                        TextEntry::make('registration_number')
+                                            ->label('Αριθμός Πρωτοκόλλου')
+                                            ->weight('medium')
+                                            ->color('primary'),
 
-                /*
-                |--------------------------------------------------------------------------
-                | ΔΕΙΓΜΑΤΑ ΕΡΓΑΣΤΗΡΙΟΥ
-                |--------------------------------------------------------------------------
-                */
-                Section::make('Δείγματα Εργαστηρίου')
-                    ->icon('heroicon-o-beaker')
-                    ->schema([
-                        TextEntry::make('labCategory.name')
-                            ->label('Κατηγορία Δείγματος Εργαστηρίου')
-                            ->badge()
-                            ->color('info')
-                            ->icon('heroicon-o-beaker'),
+                                        TextEntry::make('date')
+                                            ->label('Ημερομηνία')
+                                            ->date(),
 
-                        Fieldset::make('Σύνοψη Δειγμάτων')
-                            ->schema([
-                                TextEntry::make('num_samples_received')
-                                    ->label('Ληφθέντα')
-                                    ->numeric(),
+                                        TextEntry::make('year')
+                                            ->label('Έτος'),
+                                    ]),
 
-                                TextEntry::make('not_valid_samples')
-                                    ->label('Ακατάλληλα')
-                                    ->numeric(),
+                                    Grid::make(2)->schema([
+                                        TextEntry::make('customer.name')
+                                            ->label('Πελάτης')
+                                            ->weight('medium')
+                                            ->columnSpan(2),
+                                    ]),
+                                ]),
 
-                                TextEntry::make('total_samples')
-                                    ->label('Έγκυρα')
-                                    ->numeric()
-                                    ->color('success')
-                                    ->weight('medium'),
-                            ])
-                            ->columns(3),
-                    ])
-                    ->columnSpanFull()
-                    ->columns(1),
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S2 – Δείγματα Εργαστηρίου
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Δείγματα Εργαστηρίου')
+                                ->icon('heroicon-o-beaker')
+                                ->compact()
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        TextEntry::make('labCategory.name')
+                                            ->label('Κατηγορία Δείγματος')
+                                            ->placeholder('-')
+                                            ->columnSpan(2),
+                                    ]),
 
-                /*
-                |--------------------------------------------------------------------------
-                | ΠΕΛΑΤΗΣ & ΣΥΜΒΑΣΗ
-                |--------------------------------------------------------------------------
-                */
-                Section::make('Πελάτης & Σύμβαση')
-                    ->icon('heroicon-o-clipboard-document-check')
-                    ->schema([
-                        TextEntry::make('customer.name')
-                            ->label('Πελάτης')
-                            ->icon('heroicon-o-building-office')
-                            ->weight('medium')
-                            ->color('primary')
-                            ->placeholder('-'),
+                                    Grid::make(3)->schema([
+                                        TextEntry::make('num_samples_received')
+                                            ->label('Ληφθέντα Δείγματα')
+                                            ->badge()
+                                            ->numeric(),
 
-                        TextEntry::make('contract.title')
-                            ->label('Σύμβαση')
-                            ->icon('heroicon-o-clipboard-document')
-                            ->placeholder('-'),
+                                        TextEntry::make('not_valid_samples')
+                                            ->label('Ακατάλληλα')
+                                            ->badge()
+                                            ->color('danger')
+                                            ->numeric(),
 
-                        TextEntry::make('contractSample.category.name')
-                            ->label('Κατηγορία Δειγμάτων Σύμβασης')
-                            ->icon('heroicon-o-rectangle-stack')
-                            ->placeholder('-'),
-                    ])
-                    ->columnSpanFull()
-                    ->columns(3),
+                                        TextEntry::make('total_samples')
+                                            ->label('Έγκυρα')
+                                            ->badge()
+                                            ->numeric()
+                                            ->weight('medium'),
+                                    ]),
+                                ]),
 
-                /*
-                |--------------------------------------------------------------------------
-                | ΠΑΡΑΤΗΡΗΣΕΙΣ & ΚΑΤΑΣΤΑΣΗ
-                |--------------------------------------------------------------------------
-                */
-                Section::make('Κατάσταση & Παρατηρήσεις')
-                    ->icon('heroicon-o-rectangle-stack')
-                    ->schema([
-                        TextEntry::make('status')
-                            ->label('Κατάσταση')
-                            ->badge()
-                            ->color(fn ($state) => match ($state) {
-                                RecordStatusEnum::Active->value => 'success',
-                                RecordStatusEnum::Inactive->value => 'gray',
-                                default => 'warning',
-                            }),
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S4 – Αναλύσεις
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Αναλύσεις')
+                                ->icon('heroicon-o-chart-bar')
+                                ->description('Συνοπτική παρουσίαση των αναλύσεων του πρωτοκόλλου')
+                                ->compact()
+                                ->schema([
 
-                        TextEntry::make('comments')
-                            ->label('Παρατηρήσεις')
-                            ->placeholder('-')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                                    Grid::make(3)->schema([
+                                        TextEntry::make('analyses_count')
+                                            ->label('Πλήθος Αναλύσεων')
+                                            ->numeric()
+                                            ->badge()
+                                            ->color('info')
+                                            ->placeholder('0')
+                                            ->getStateUsing(fn (Registration $record) => $record->analyses()->count())
+                                            ->columnSpan(1),
+                                    ]),
 
-                /*
-                |--------------------------------------------------------------------------
-                | ΜΕΤΑΔΕΔΟΜΕΝΑ
-                |--------------------------------------------------------------------------
-                */
-                Section::make('Μεταδεδομένα')
-                    ->collapsed()
-                    ->collapsible()
-                    ->schema([
-                        TextEntry::make('created_at')
-                            ->label('Δημιουργήθηκε')
-                            ->dateTime('d/m/Y H:i')
-                            ->icon('heroicon-o-clock'),
+                                    TextEntry::make('analyses_summary')
+                                        ->label('Σύνοψη Αναλύσεων')
+                                        ->html()
+                                        ->getStateUsing(function (Registration $record) {
 
-                        TextEntry::make('updated_at')
-                            ->label('Τελευταία Ενημέρωση')
-                            ->dateTime('d/m/Y H:i')
-                            ->icon('heroicon-o-arrow-path'),
+                                            if ($record->analyses->isEmpty()) {
+                                                return '-';
+                                            }
 
-                        TextEntry::make('createdBy.name')
-                            ->label('Καταχωρήθηκε από')
-                            ->placeholder('-'),
+                                            return $record->analyses
+                                                ->map(fn ($a) =>
+                                                    e($a->analysis_name)
+                                                    . ' (<strong>' . number_format($a->analysis_price, 2) . ' €</strong>)'
+                                                )
+                                                ->join(', ');
+                                        })
+                                        ->columnSpanFull(),
+                                ]),
 
-                        TextEntry::make('updatedBy.name')
-                            ->label('Τελευταία ενημέρωση από')
-                            ->placeholder('-'),
-                    ])
-                    ->columns(2),
-            ]);
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S5 – Κατάσταση & Παρατηρήσεις
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Κατάσταση & Παρατηρήσεις')
+                                ->icon('heroicon-o-rectangle-stack')
+                                ->compact()
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        TextEntry::make('status')
+                                            ->label('Κατάσταση')
+                                            ->badge()
+                                            ->color(fn ($state) =>
+                                                $state === 'active' ? 'success' : 'gray'
+                                            )
+                                            ->columnSpan(1),
+                                    ]),
+
+                                    TextEntry::make('comments')
+                                        ->label('Παρατηρήσεις')
+                                        ->placeholder('-')
+                                        ->columnSpanFull(),
+                                ]),
+                        ]),
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | RIGHT COLUMN (1/3)
+                    |--------------------------------------------------------------------------
+                    */
+                    Grid::make(1)
+                        ->columnSpan(1)
+                        ->schema([
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S3 – Σύμβαση & Γραμμή Σύμβασης
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Σύμβαση & Πληροφορίες')
+                                ->icon('heroicon-o-clipboard-document-check')
+                                ->compact()
+                                ->schema([
+                                    TextEntry::make('contract.title')
+                                        ->label('Σύμβαση')
+                                        ->weight('medium')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('contractSample.category.name')
+                                        ->label('Κατηγορία Δειγμάτων Σύμβασης')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('contractSample.cost_calculation_type')
+                                        ->label('Τύπος Κόστους')
+                                        ->badge()
+                                        ->color(fn ($state) =>
+                                            $state === 'variable' ? 'warning' : 'success'
+                                        ),
+
+                                    TextEntry::make('contractSample.max_analyses')
+                                        ->label('Μέγιστο Όριο Αναλύσεων')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('customer_contract_info')
+                                        ->label('Πληροφορίες Σύμβασης Πελάτη')
+                                        ->html()
+                                        ->columnSpanFull(),
+                                ]),
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Οικονομικά Πρωτοκόλλου – Updated
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Οικονομικά Πρωτοκόλλου')
+                                ->icon('heroicon-o-currency-euro')
+                                ->compact()
+                                ->schema([
+                                    Grid::make(1)->schema([
+                                        TextEntry::make('calculated_unit_price')
+                                            ->label('Τιμή Δείγματος (€)')
+                                            ->numeric(2)
+                                            ->placeholder('-')
+                                            ->columnSpanFull(),
+
+                                        TextEntry::make('calculated_total')
+                                            ->label('Τελικό Ποσό (€)')
+                                            ->numeric(2)
+                                            ->weight('bold')
+                                            ->color('success')
+                                            ->columnSpanFull(),
+                                    ]),
+                                ]),
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | S6 – Στοιχεία Καταγραφής
+                            |--------------------------------------------------------------------------
+                            */
+                            Section::make('Στοιχεία Καταγραφής')
+                                ->icon('heroicon-o-information-circle')
+                                ->compact()
+                                ->schema([
+                                    TextEntry::make('created_at')
+                                        ->label('Δημιουργήθηκε')
+                                        ->dateTime('d/m/Y H:i')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('updated_at')
+                                        ->label('Τροποποιήθηκε')
+                                        ->dateTime('d/m/Y H:i')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('createdBy.name')
+                                        ->label('Καταχωρήθηκε από')
+                                        ->placeholder('-'),
+
+                                    TextEntry::make('updatedBy.name')
+                                        ->label('Τροποποιήθηκε από')
+                                        ->placeholder('-'),
+                                ]),
+                        ]),
+                ]),
+        ]);
     }
 }

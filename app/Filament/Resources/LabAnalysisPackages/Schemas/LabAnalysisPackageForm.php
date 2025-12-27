@@ -17,15 +17,19 @@ class LabAnalysisPackageForm
             ->components([
 
                 Section::make('Στοιχεία Πακέτου Αναλύσεων')
+                    ->description('Ορισμός του ονόματος, της κατηγορίας δείγματος και της κατάστασης του πακέτου.')
                     ->icon('heroicon-o-rectangle-stack')
+                    ->compact() // Κάνει την ενότητα πιο συμπαγή
                     ->schema([
 
+                        // 1. Κατηγορία & Όνομα (2/3 πλάτος)
                         Select::make('lab_sample_category_id')
                             ->relationship('labSampleCategory', 'name')
                             ->label('Κατηγορία Δείγματος')
                             ->searchable()
                             ->preload()
-                            ->required(),
+                            ->required()
+                            ->columnSpan(1),
 
                         TextInput::make('name')
                             ->label('Όνομα Πακέτου')
@@ -33,21 +37,14 @@ class LabAnalysisPackageForm
                             ->required()
                             ->columnSpan(1),
 
+                        // 2. Περιγραφή (Πλήρες Πλάτος)
                         Textarea::make('description')
                             ->label('Περιγραφή')
                             ->placeholder('Προαιρετική περιγραφή του πακέτου αναλύσεων.')
                             ->rows(2)
                             ->columnSpanFull(),
 
-                    ])
-                    ->columns(2)
-                    ->columnSpanFull(),
-
-
-                Section::make('Κατάσταση')
-                    ->icon('heroicon-o-check-circle')
-                    ->schema([
-
+                        // 3. Κατάσταση (1/3 πλάτος, στο κάτω μέρος της ενότητας)
                         Select::make('status')
                             ->label('Κατάσταση')
                             ->options([
@@ -55,10 +52,11 @@ class LabAnalysisPackageForm
                                 RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
                             ])
                             ->default(RecordStatusEnum::Active->value)
-                            ->required(),
+                            ->required()
+                            ->columnSpan(1), // Στήλη 1 για να ευθυγραμμιστεί με τα παραπάνω πεδία
 
                     ])
-                    ->columns(1)
+                    ->columns(2) // Κύρια διάταξη σε 2 στήλες
                     ->columnSpanFull(),
 
             ]);

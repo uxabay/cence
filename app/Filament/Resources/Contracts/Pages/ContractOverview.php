@@ -17,6 +17,8 @@ use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
@@ -41,14 +43,14 @@ class ContractOverview extends Page implements HasTable
         return 'Επισκόπηση Σύμβασης – ' . $this->record->display_title;
     }
 
-    public function getBreadcrumbs(): array
+    protected function getHeaderActions(): array
     {
         return [
-            route('filament.admin.resources.contracts.index') => 'Συμβάσεις',
-            route('filament.admin.resources.contracts.view', $this->record) => $this->record->display_title,
-            url()->current() => 'Επισκόπηση',
+            ViewAction::make(),
+            EditAction::make(),
         ];
     }
+
 
     public static function form(Schema $form): Schema
     {

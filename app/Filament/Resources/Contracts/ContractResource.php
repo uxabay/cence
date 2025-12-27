@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Contracts;
 
 use App\Filament\Resources\Contracts\Pages\ContractOverview;
+use App\Filament\Resources\Contracts\Pages\ContractActivity;
 use App\Filament\Resources\Contracts\Pages\CreateContract;
 use App\Filament\Resources\Contracts\Pages\EditContract;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
@@ -18,8 +19,10 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Database\Eloquent\Model;
 
 class ContractResource extends Resource
 {
@@ -50,8 +53,10 @@ class ContractResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+
             RelationManagers\SamplesRelationManager::class,
+            RelationManagers\RegistrationsRelationManager::class,
+            // ...
         ];
     }
 
@@ -64,6 +69,7 @@ class ContractResource extends Resource
             'edit' => EditContract::route('/{record}/edit'),
 
             'overview' => ContractOverview::route('/{record}/overview'),
+            'activities' => ContractActivity::route(path: '{record}/activities'),
         ];
     }
 

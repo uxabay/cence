@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class LabCustomerPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('view_any_lab_customer');
@@ -34,7 +34,8 @@ class LabCustomerPolicy
 
     public function delete(AuthUser $authUser, LabCustomer $labCustomer): bool
     {
-        return $authUser->can('delete_lab_customer');
+        return $authUser->can('delete_lab_customer')
+            && $labCustomer->canBeDeleted();
     }
 
     public function restore(AuthUser $authUser, LabCustomer $labCustomer): bool

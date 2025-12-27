@@ -83,7 +83,12 @@ class LabCustomer extends Model
     */
     public function registrations(): HasMany
     {
-        return $this->hasMany(Registration::class, 'lab_customer_id');
+        return $this->hasMany(Registration::class, 'customer_id');
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'lab_customer_id');
     }
 
     public function category(): BelongsTo
@@ -174,4 +179,29 @@ class LabCustomer extends Model
 
         return implode(', ', $parts);
     }
+
+    /**
+     * Business rule: Δεν διαγράφεται πελάτης όταν έχει συνδεδεμένα πρωτόκολλα (registrations).
+     */
+    public function canBeDeleted(): bool
+    {
+        return ! $this->registrations()->exists()
+            && ! $this->contracts()->exists();
+    }
+
+    public function deletionBlockers(bool $withCounts = false): array
+    {
+        $blockers = [];
+
+        if ($this->registrations()->exists()) {
+            $blockers['registrations'] = $withCounts ? $this->registrations()->count() : true;
+        }
+
+        if ($this->contracts()->exists()) {
+            $blockers['contracts'] = $withCounts ? $this->contracts()->count() : true;
+        }
+
+        return $blockers;
+    }
+    
 }

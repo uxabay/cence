@@ -7,8 +7,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 
 class ContractSampleCategoryForm
 {
@@ -16,40 +16,44 @@ class ContractSampleCategoryForm
     {
         return $schema
             ->components([
-                Section::make('Βασικές Πληροφορίες')
+                // Ενοποίηση όλων των πεδίων σε μία Section για μέγιστη ευκολία χρήσης
+                Section::make('Πληροφορίες Κατηγορίας Δειγμάτων')
+                    ->description('Ορισμός κωδικού, ονόματος και κατάστασης για την κατηγορία.')
+                    ->icon('heroicon-o-folder-open')
+                    ->compact() // Κάνει την ενότητα πιο compact οπτικά
                     ->schema([
-                        TextInput::make('code')
-                            ->label('Κωδικός')
-                            ->placeholder('Π.χ. ΚΑΤ-01')
-                            ->maxLength(50)
-                            ->required(),
+                        // Grid 3: Κωδικός, Όνομα, Κατάσταση - Όλα στην ίδια γραμμή
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('code')
+                                    ->label('Κωδικός')
+                                    ->placeholder('Π.χ. ΚΑΤ-01')
+                                    ->maxLength(50)
+                                    ->required()
+                                    ->autofocus(),
 
-                        TextInput::make('name')
-                            ->label('Όνομα Κατηγορίας')
-                            ->placeholder('Π.χ. Δείγματα Νερού')
-                            ->maxLength(255)
-                            ->required(),
-                            
+                                TextInput::make('name')
+                                    ->label('Όνομα Κατηγορίας')
+                                    ->placeholder('Π.χ. Δείγματα Νερού')
+                                    ->maxLength(255)
+                                    ->required(),
+
+                                Select::make('status')
+                                    ->label('Κατάσταση')
+                                    ->options(RecordStatusEnum::class)
+                                    ->default(RecordStatusEnum::Active)
+                                    ->required()
+                                    ->native(false),
+                            ]),
+
+                        // Περιγραφή: Πλήρες πλάτος από κάτω
                         Textarea::make('description')
                             ->label('Περιγραφή')
                             ->placeholder('Σύντομη περιγραφή της κατηγορίας...')
                             ->rows(3)
                             ->columnSpanFull(),
                     ])
-                    ->columnSpanFull()
-                    ->columns(2),
-
-
-
-                Section::make('Κατάσταση')
-                    ->schema([
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options(RecordStatusEnum::class)
-                            ->default(RecordStatusEnum::Active)
-                            ->required()
-                            ->native(false),
-                    ]),
+                    ->columnSpanFull(), // Εξασφαλίζει πλήρες πλάτος φόρμας
             ]);
     }
 }

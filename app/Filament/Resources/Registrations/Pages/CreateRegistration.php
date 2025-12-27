@@ -26,4 +26,17 @@ class CreateRegistration extends CreateRecord
         return parent::getCreateAnotherFormAction()
             ->label('Αποθήκευση & Προσθήκη νέου'); // ✅ Your custom Greek label
     }
+
+    protected function afterSave(): void
+    {
+        $record = $this->record;
+
+        // Ξαναφορτώνουμε τις αναλύσεις που μόλις ενημερώθηκαν
+        $record->load('analyses');
+
+        // Υπολογίζουμε το κόστος
+        $record->calculateCost();
+
+        $record->save();
+    }
 }

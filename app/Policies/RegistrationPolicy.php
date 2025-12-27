@@ -11,7 +11,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class RegistrationPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('view_any_registration');
@@ -34,7 +34,8 @@ class RegistrationPolicy
 
     public function delete(AuthUser $authUser, Registration $registration): bool
     {
-        return $authUser->can('delete_registration');
+        return $authUser->can('delete_registration')
+            && $registration->canBeDeleted();
     }
 
     public function restore(AuthUser $authUser, Registration $registration): bool

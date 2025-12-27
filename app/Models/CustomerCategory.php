@@ -10,6 +10,7 @@ use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Enums;
 
 class CustomerCategory extends Model
 {
@@ -88,4 +89,24 @@ class CustomerCategory extends Model
     {
         return $query->where('status', \App\Enums\CustomerCategoryStatus::Active);
     }
+
+    /**
+     * Business rule: Μια κατηγορία πελατών δεν διαγράφεται αν έχει συνδεδεμένους πελάτες.
+     */
+    public function canBeDeleted(): bool
+    {
+        return ! $this->customers()->exists();
+    }
+
+    public function deletionBlockers(): array
+    {
+        $blockers = [];
+
+        if ($this->customers()->exists()) {
+            $blockers[] = 'customers';
+        }
+
+        return $blockers;
+    }
+
 }

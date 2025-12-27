@@ -77,6 +77,11 @@ class Contract extends Model
     | Relationships
     |--------------------------------------------------------------------------
     */
+    public function registrations(): HasMany
+    {
+        return $this->hasMany(Registration::class, 'contract_id');
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(LabCustomer::class, 'lab_customer_id');
@@ -140,6 +145,12 @@ class Contract extends Model
     | Accessors & Helpers
     |--------------------------------------------------------------------------
     */
+    public function refreshAndCheckNotifications(): void
+    {
+        app(\App\Services\Contracts\ContractNotificationService::class)
+            ->evaluateContract($this);
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return $this->status?->getLabel() ?? '-';

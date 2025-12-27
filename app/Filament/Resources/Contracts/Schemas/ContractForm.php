@@ -19,103 +19,132 @@ class ContractForm
     {
         return $schema
             ->components([
-                // 📄 Βασικά Στοιχεία
-                Section::make('Βασικά Στοιχεία Σύμβασης')
-                    ->icon('heroicon-o-document-text')
-                    ->schema([
-                        TextInput::make('contract_number')
-                            ->label('Αριθμός Σύμβασης')
-                            ->required()
-                            ->placeholder('π.χ. ΚΠ 6358/2025')
-                            ->columnSpan(1),
-
-                        TextInput::make('title')
-                            ->label('Τίτλος')
-                            ->required()
-                            ->placeholder('π.χ. Προγραμματική Σύμβαση ΕΟΔΥ - Πανεπιστημίου Θεσσαλίας')
-                            ->columnSpan(1),
-
-                        Select::make('lab_customer_id')
-                            ->label('Πελάτης')
-                            ->relationship(
-                                name: 'customer',
-                                titleAttribute: 'name',
-                                modifyQueryUsing: fn ($query) => $query->where('status', 'active')
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->placeholder('Επιλέξτε πελάτη')
-                            ->columnSpan(1),
-
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options(RecordStatusEnum::class)
-                            ->default(RecordStatusEnum::Active)
-                            ->selectablePlaceholder(false)
-                            ->columnSpan(1),
-                    ])
+                // Main Grid Container: 2:1 column layout
+                Grid::make(3)
                     ->columnSpanFull()
-                    ->columns(2),
-
-                Grid::make(2)
                     ->schema([
-                        // 📅 Χρονική Διάρκεια
-                        Section::make('Χρονική Διάρκεια')
-                            ->icon('heroicon-o-calendar-days')
+
+                        // === LEFT COLUMN (2/3 width) - Identity, Content, and Attachments ===
+                        Grid::make(1) // Single column container for sections
+                            ->columnSpan(2)
                             ->schema([
-                                DatePicker::make('date_start')
-                                    ->label('Ημερομηνία Έναρξης')
-                                    ->native(false)
-                                    ->required()
-                                    ->closeOnDateSelection()
-                                    ->columnSpan(1),
 
-                                DatePicker::make('date_end')
-                                    ->label('Ημερομηνία Λήξης')
-                                    ->native(false)
-                                    ->closeOnDateSelection()
-                                    ->afterOrEqual('date_start')
-                                    ->helperText('Αν παραμείνει κενό, η σύμβαση θεωρείται ενεργή χωρίς λήξη.')
-                                    ->columnSpan(1),
-                            ])
-                            ->columns(2),
+                                // 1. 📄 Βασικά Στοιχεία
+                                Section::make('Βασικά Στοιχεία Σύμβασης')
+                                    ->description('Αριθμός, τίτλος, και ο πελάτης στον οποίο αντιστοιχεί η σύμβαση.')
+                                    ->icon('heroicon-o-document-text')
+                                    ->compact()
+                                    ->schema([
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextInput::make('contract_number')
+                                                    ->label('Αριθμός Σύμβασης')
+                                                    ->required()
+                                                    ->placeholder('π.χ. ΚΠ 6358/2025'),
 
-                            // 📎 Συνημμένο Έγγραφο
-                            Section::make('Συνημμένο Έγγραφο')
-                                ->icon('heroicon-o-paper-clip')
-                                ->schema([
-                                    FileUpload::make('file_attachment_id')
-                                        ->label('Αρχείο Σύμβασης')
-                                        ->directory('contracts')
-                                        ->preserveFilenames()
-                                        ->downloadable()
-                                        ->openable()
-                                        ->acceptedFileTypes(['application/pdf'])
-                                        ->hint('Επιτρεπόμενος τύπος αρχείου: PDF')
-                                        ->columnSpanFull(),
-                                ]),
-                    ])
-                    ->columnSpanFull(),
+                                                TextInput::make('title')
+                                                    ->label('Τίτλος')
+                                                    ->required()
+                                                    ->placeholder('π.χ. Προγραμματική Σύμβαση ΕΟΔΥ - Πανεπιστημίου Θεσσαλίας')
+                                                    ->columnSpan(2),
+                                            ]),
 
-                // 📝 Περιγραφή & Παρατηρήσεις
-                Section::make('Περιγραφή & Παρατηρήσεις')
-                    ->icon('heroicon-o-clipboard-document-list')
-                    ->schema([
-                        RichEditor::make('description')
-                            ->label('Περιγραφή')
-                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
-                            ->placeholder('Προσθέστε συνοπτική περιγραφή της σύμβασης...')
-                            ->columnSpanFull(),
+                                        // Customer Select remains full width for prominence
+                                        Select::make('lab_customer_id')
+                                            ->label('Πελάτης')
+                                            ->relationship(
+                                                name: 'customer',
+                                                titleAttribute: 'name',
+                                                modifyQueryUsing: fn ($query) => $query->where('status', 'active')
+                                            )
+                                            ->searchable()
+                                            ->preload()
+                                            ->required()
+                                            ->placeholder('Επιλέξτε πελάτη')
+                                            ->columnSpanFull(),
+                                    ]),
 
-                        Textarea::make('remarks')
-                            ->label('Παρατηρήσεις')
-                            ->placeholder('Πρόσθετες σημειώσεις ή ειδικοί όροι...')
-                            ->rows(2)
-                            ->columnSpanFull(),
-                    ])
-                    ->columnSpanFull()
-                    ->columns(1),
+                                // 2. 📝 Περιγραφή & Παρατηρήσεις
+                                Section::make('Περιγραφή & Παρατηρήσεις')
+                                    ->description('Πλήρης περιγραφή των όρων και ειδικές παρατηρήσεις.')
+                                    ->icon('heroicon-o-clipboard-document-list')
+                                    ->compact()
+                                    ->schema([
+                                        RichEditor::make('description')
+                                            ->label('Περιγραφή')
+                                            ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
+                                            ->placeholder('Προσθέστε συνοπτική περιγραφή της σύμβασης...')
+                                            ->columnSpanFull(),
+
+                                        Textarea::make('remarks')
+                                            ->label('Παρατηρήσεις')
+                                            ->placeholder('Πρόσθετες σημειώσεις ή ειδικοί όροι...')
+                                            ->rows(2)
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                // 3. 📎 Συνημμένο Έγγραφο (ΜΕΤΑΚΙΝΗΘΗΚΕ ΕΔΩ)
+                                Section::make('Συνημμένο Έγγραφο')
+                                    ->description('Αρχείο PDF της υπογεγραμμένης σύμβασης. Προσθέστε εδώ όλα τα σχετικά έγγραφα.')
+                                    ->icon('heroicon-o-paper-clip')
+                                    ->compact()
+                                    ->schema([
+                                        FileUpload::make('file_attachment_id')
+                                            ->label('Αρχείο Σύμβασης')
+                                            ->directory('contracts')
+                                            ->preserveFilenames()
+                                            ->downloadable()
+                                            ->openable()
+                                            ->acceptedFileTypes(['application/pdf'])
+                                            ->hint('Επιτρεπόμενος τύπος αρχείου: PDF')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(1),
+                            ]),
+
+
+                        // === RIGHT COLUMN (1/3 width) - Duration and Status ===
+                        Grid::make(1)
+                            ->columnSpan(1)
+                            ->schema([
+
+                                // 4. 📅 Χρονική Διάρκεια (ΠΡΩΤΟ)
+                                Section::make('Χρονική Διάρκεια')
+                                    ->description('Ημερομηνίες έναρξης και λήξης ισχύος.')
+                                    ->icon('heroicon-o-calendar-days')
+                                    ->compact()
+                                    ->schema([
+                                        DatePicker::make('date_start')
+                                            ->label('Ημερομηνία Έναρξης')
+                                            ->native(false)
+                                            ->required()
+                                            ->closeOnDateSelection(),
+
+                                        DatePicker::make('date_end')
+                                            ->label('Ημερομηνία Λήξης')
+                                            ->native(false)
+                                            ->closeOnDateSelection()
+                                            ->afterOrEqual('date_start')
+                                            ->hint('Αν κενό, θεωρείται ενεργή χωρίς λήξη.'),
+                                    ])
+                                    ->columns(1), // Stacking date pickers in the sidebar
+
+                                // 5. ⚙️ Διαχείριση & Κατάσταση (ΔΕΥΤΕΡΟ)
+                                Section::make('Διαχείριση & Κατάσταση')
+                                    ->description('Κατάσταση σύμβασης.')
+                                    ->icon('heroicon-o-briefcase')
+                                    ->compact()
+                                    ->schema([
+                                        Select::make('status')
+                                            ->label('Κατάσταση')
+                                            ->options(RecordStatusEnum::class)
+                                            ->default(RecordStatusEnum::Active)
+                                            ->selectablePlaceholder(false),
+                                    ])
+                                    ->columns(1), // Force 1 column within the sidebar for stacking
+
+                            ]),
+                    ]),
             ]);
     }
 }

@@ -91,4 +91,13 @@ return [
      * need to be searched each time the application boots up.
      */
     'discovered_settings_cache_path' => base_path('bootstrap/cache'),
+
+
+    'groups' => [
+        'contract_notifications' => [
+            'disk' => null,
+            'casts' => [],
+        ],
+    ],
+
 ];

@@ -8,13 +8,16 @@ use App\Models\ContractSampleCategory;
 use App\Models\LabSampleCategory;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Infolist;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Grid;
 use Filament\Tables\Grouping\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
@@ -34,23 +37,35 @@ use Filament\Actions\RestoreBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Schemas\Components\Utilities\Get;
-
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Support\Number;
+use Filament\Support\Colors\Color;
+use Filament\Support\Enums\FontWeight;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Model;
 
 class SamplesRelationManager extends RelationManager
 {
     protected static string $relationship = 'samples';
     protected static ?string $recordTitleAttribute = 'display_label';
 
-    // ─────────────────────────────── FORM ───────────────────────────────
+
+    /**
+     * Defines the contract sample form schema.
+     * Changed from static configure to instance method form() as requested.
+     */
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Στοιχεία Δείγματος Σύμβασης')
+                Section::make('Στοιχεία Γραμμής Σύμβασης')
+                    ->description('Ορισμός του δείγματος, της τιμολόγησης και των ορίων εκτέλεσης.')
                     ->icon('heroicon-o-beaker')
+                    ->compact() // Κάνει την ενότητα πιο compact, ιδανικό για modal
                     ->schema([
 
-                        Fieldset::make()
+                        // 1. Ταυτότητα Γραμμής (3 στήλες)
+                        Fieldset::make('Ταυτότητα Γραμμής')
                             ->schema([
 
                                 Select::make('contract_sample_category_id')
@@ -62,20 +77,7 @@ class SamplesRelationManager extends RelationManager
                                     ->searchable()
                                     ->preload()
                                     ->required()
-                                    ->columnSpan(1),
-
-                                TextInput::make('name')
-                                    ->label('Τίτλος Δείγματος')
-                                    ->placeholder('π.χ. Αρχική Σύμβαση, Τροποποιητική 1')
-                                    ->helperText('Ο τίτλος της γραμμής σύμβασης.')
-                                    ->required()
-                                    ->columnSpan(1),
-
-                                Toggle::make('is_master')
-                                    ->label('Κύρια Γραμμή')
-                                    ->inline(false)
-                                    ->helperText('Η κύρια γραμμή χρησιμοποιείται ως σημείο αναφοράς σε ορισμένες συμβάσεις.')
-                                    ->columnSpan(1),
+                                    ->columnSpan(2), // Δίνει περισσότερο πλάτος για την κατηγορία
 
                                 TextInput::make('year')
                                     ->label('Έτος')
@@ -83,12 +85,26 @@ class SamplesRelationManager extends RelationManager
                                     ->default(now()->year)
                                     ->columnSpan(1),
 
+                                TextInput::make('name')
+                                    ->label('Όνομα Γραμμής Σύμβασης')
+                                    ->placeholder('π.χ. Αρχική Σύμβαση, Τροποποιητική 1')
+                                    ->helperText('Ο τίτλος της γραμμής σύμβασης.')
+                                    ->required()
+                                    ->columnSpan(2),
+
+                                Toggle::make('is_master')
+                                    ->label('Κύρια Γραμμή (Master)')
+                                    ->inline(false)
+                                    ->helperText('Η κύρια γραμμή χρησιμοποιείται ως σημείο αναφοράς σε ορισμένες συμβάσεις.')
+                                    ->columnSpan(1),
+
                             ])
-                            ->columnSpanFull()
-                            ->columns(2),
+                            ->columns(3)
+                            ->columnSpanFull(),
 
 
-                        Fieldset::make('Τιμολόγηση & Υπολογισμός')
+                        // 2. Τιμολόγηση & Υπολογισμός (3 στήλες)
+                        Fieldset::make('Τιμολόγηση & Όρια')
                             ->schema([
 
                                 Select::make('cost_calculation_type')
@@ -99,24 +115,18 @@ class SamplesRelationManager extends RelationManager
                                     ])
                                     ->required()
                                     ->default('fix')
-                                    ->columnSpan(1),
-
-                                TextInput::make('max_analyses')
-                                    ->label('Μέγιστο Όριο Αναλύσεων')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->visible(fn (Get $get) => $get('cost_calculation_type') === 'variable')
-                                    ->helperText('Αν ο αριθμός αναλύσεων υπερβεί το όριο, εφαρμόζεται η σταθερή τιμή.')
+                                    ->live() // Added live to dynamically show max_analyses
                                     ->columnSpan(1),
 
                                 TextInput::make('price')
-                                    ->label('Τιμή Δείγματος (€)')
+                                    ->label('Τιμή Δείγματος')
                                     ->numeric()
+                                    ->prefix('€') // Διορθώθηκε: Αντικαταστάθηκε το money() με prefix('€')
                                     ->default(0)
                                     ->live(onBlur: true)
                                     ->required()
                                     ->afterStateUpdated(
-                                        fn ($set, $get) =>
+                                        fn (Set $set, Get $get) =>
                                             $set('forecasted_amount',
                                                 round(
                                                     ($get('forecasted_samples') ?? 0) * ($get('price') ?? 0),
@@ -126,12 +136,21 @@ class SamplesRelationManager extends RelationManager
                                     )
                                     ->columnSpan(1),
 
+                                TextInput::make('max_analyses')
+                                    ->label('Μέγιστο Όριο Αναλύσεων')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->visible(fn (Get $get) => $get('cost_calculation_type') === 'variable')
+                                    ->helperText('Αν οι αναλύσεις υπερβούν το όριο, εφαρμόζεται η σταθερή τιμή.')
+                                    ->columnSpan(1),
+
                             ])
                             ->columns(3)
                             ->columnSpanFull(),
 
 
-                        Fieldset::make('Ποσότητες & Ποσά')
+                        // 3. Ποσότητες & Ποσά (3 στήλες)
+                        Fieldset::make('Ποσότητες & Προϋπολογισμός')
                             ->schema([
 
                                 TextInput::make('forecasted_samples')
@@ -141,7 +160,7 @@ class SamplesRelationManager extends RelationManager
                                     ->live(onBlur: true)
                                     ->required()
                                     ->afterStateUpdated(
-                                        fn ($set, $get) =>
+                                        fn (Set $set, Get $get) =>
                                             $set('forecasted_amount',
                                                 round(
                                                     ($get('forecasted_samples') ?? 0) * ($get('price') ?? 0),
@@ -152,17 +171,19 @@ class SamplesRelationManager extends RelationManager
                                     ->columnSpan(1),
 
                                 TextInput::make('forecasted_amount')
-                                    ->label('Προϋπολογισθέν Ποσό (€)')
+                                    ->label('Προϋπολογισθέν Ποσό')
                                     ->numeric()
+                                    ->prefix('€') // Διορθώθηκε: Αντικαταστάθηκε το money() με prefix('€')
                                     ->default(0)
                                     ->readOnly()
-                                    ->columnSpan(1),
+                                    ->columnSpan(2), // Μεγαλύτερο πλάτος για το ReadOnly πεδίο
 
                             ])
-                            ->columns(2)
+                            ->columns(3)
                             ->columnSpanFull(),
 
 
+                        // 4. Κατηγορίες Εργαστηρίου (Full Width)
                         Select::make('labCategories')
                             ->label('Κατηγορίες Εργαστηρίου')
                             ->relationship(
@@ -175,24 +196,28 @@ class SamplesRelationManager extends RelationManager
                             ->columnSpanFull()
                             ->hint('Συνδέστε μία ή περισσότερες κατηγορίες εργαστηριακών δειγμάτων.'),
 
+                        // 5. Παρατηρήσεις & Κατάσταση (2 στήλες)
+                        Grid::make(2)
+                            ->columnSpanFull()
+                            ->schema([
+                                Textarea::make('remarks')
+                                    ->label('Παρατηρήσεις')
+                                    ->rows(2)
+                                    ->columnSpan(1),
 
-                        Textarea::make('remarks')
-                            ->label('Παρατηρήσεις')
-                            ->rows(2)
-                            ->columnSpanFull(),
-
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options([
-                                RecordStatusEnum::Active->value => RecordStatusEnum::Active->getLabel(),
-                                RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
-                            ])
-                            ->default(RecordStatusEnum::Active->value)
-                            ->required()
-                            ->columnSpan(1),
+                                Select::make('status')
+                                    ->label('Κατάσταση')
+                                    ->options([
+                                        RecordStatusEnum::Active->value => RecordStatusEnum::Active->getLabel(),
+                                        RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
+                                    ])
+                                    ->default(RecordStatusEnum::Active->value)
+                                    ->required()
+                                    ->columnSpan(1),
+                            ]),
 
                     ])
-                    ->columns(2)
+                    ->columns(1)
                     ->columnSpanFull(),
             ]);
     }
@@ -211,7 +236,7 @@ class SamplesRelationManager extends RelationManager
 
             ->groups([
                 Group::make('name')
-                    ->label('Είδος Δείγματος')
+                    ->label('Σύμβαση')
                     ->collapsible()
                     ->getTitleFromRecordUsing(fn ($record) => $record->name),
 
@@ -223,7 +248,7 @@ class SamplesRelationManager extends RelationManager
 
             ->columns([
                 TextColumn::make('name')
-                    ->label('Είδος Δείγματος')
+                    ->label('Σύμβαση')
                     ->weight('medium')
                     ->color('primary')
                     ->sortable()
@@ -325,6 +350,15 @@ class SamplesRelationManager extends RelationManager
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getTabComponent(Model $ownerRecord, string $pageClass): \Filament\Schemas\Components\Tabs\Tab
+    {
+        return \Filament\Schemas\Components\Tabs\Tab::make('Κατηγορίες Δειγμάτων')
+            ->icon('heroicon-o-rectangle-stack')
+            ->badge($ownerRecord->samples()->count())
+            ->badgeColor('info')
+            ->badgeTooltip('Σύνολο κατηγοριών δειγμάτων');
     }
 
 }

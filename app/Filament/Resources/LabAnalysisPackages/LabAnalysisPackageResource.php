@@ -65,10 +65,18 @@ class LabAnalysisPackageResource extends Resource
         ];
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withCount('analyses')
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()
-            ->withCount('analyses')
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

@@ -32,6 +32,8 @@ class ContractSample extends Model
         'currency_code',
         'remarks',
         'status',
+        'cost_calculation_type',   // ← Νέο
+        'max_analyses',            // ← Νέο
         'created_by',
         'updated_by',
     ];

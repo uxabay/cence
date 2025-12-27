@@ -9,8 +9,10 @@
         "php": "^8.2",
         "bezhansalleh/filament-shield": "^4.0",
         "filament/filament": "^4.0",
+        "filament/spatie-laravel-settings-plugin": "*",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "pxlrbt/filament-activity-log": "^2.0",
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-permission": "^6.21",
         "spatie/laravel-settings": "^3.4"

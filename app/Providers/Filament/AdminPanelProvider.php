@@ -23,19 +23,22 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\Facades\Auth;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\FontProviders\GoogleFontProvider;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
+            ->topbar(true)
+
             ->default()
             ->id('admin')
             ->path('admin')
             ->login()
             ->profile()
 
-            ->font('TikTok Sans')
+            ->font('Ubuntu Sans', provider: GoogleFontProvider::class)
 
             ->navigationGroups([
                 NavigationGroup::make()
@@ -55,26 +58,24 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-chart-bar'),
             ])
 
-            ->colors([
-                'primary' => Color::Emerald,
-            ])
-
             ->spa(hasPrefetching: true)
 
-            ->databaseNotifications()
+            ->databaseNotifications(true)
 
             ->sidebarCollapsibleOnDesktop()
 
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
-                Dashboard::class,
+                \App\Filament\Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
             ])
+
+            ->favicon(asset('images/cence_fav_icon.png'))
+            ->brandLogo(asset('images/cence_logo_full.png'))
+
 
             ->middleware([
                 EncryptCookies::class,
@@ -95,6 +96,7 @@ class AdminPanelProvider extends PanelProvider
 
             ->plugins([
                 FilamentShieldPlugin::make()
+                    ->globallySearchable(false)
                     ->gridColumns([
                         'default' => 1,
                         'sm' => 2,
