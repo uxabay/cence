@@ -12,6 +12,7 @@ use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +22,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Forms\Components\DatePicker;
 use App\Enums\RecordStatusEnum;
 use App\Models\Registration;
+use App\Filament\Resources\Registrations\RegistrationResource;
 
 class RegistrationsTable
 {
@@ -107,6 +109,11 @@ class RegistrationsTable
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
+                    Action::make('activities')
+                        ->label('Καταγραφές')
+                        ->icon('heroicon-o-list-bullet')
+                        ->authorize('view_activity_log')
+                        ->url(fn ($record) => RegistrationResource::getUrl('activities', ['record' => $record])),
                     EditAction::make(),
                     DeleteAction::make(),
                     RestoreAction::make(),

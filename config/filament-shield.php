@@ -236,6 +236,7 @@ return [
         'approve_revisions',
         'manage_reallocations',
         'view_related_registrations',
+        'view_activity_log',
     ],
 
     /*

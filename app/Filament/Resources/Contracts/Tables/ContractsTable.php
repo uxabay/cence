@@ -108,8 +108,9 @@ class ContractsTable
                         ->openUrlInNewTab(false),
 
                     Action::make('activities')
-                        ->label('Δραστηριότητα')
-                        ->icon('heroicon-o-document')
+                        ->label('Καταγραφές')
+                        ->icon('heroicon-o-list-bullet')
+                        ->authorize('view_activity_log')
                         ->url(fn ($record) => ContractResource::getUrl('activities', ['record' => $record])),
 
                     EditAction::make()->label('Επεξεργασία')->icon('heroicon-o-pencil-square'),
