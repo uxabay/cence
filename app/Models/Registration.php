@@ -312,6 +312,19 @@ class Registration extends Model
         );
     }
 
+    public static function nextNumberForYear(int $year): string
+    {
+        $last = static::where('year', $year)
+            ->latest('id')
+            ->value('registration_number');
+
+        if (! $last || ! preg_match('/^(\d{1,})\//', $last, $m)) {
+            return sprintf('%05d/%s', 1, $year);
+        }
+
+        return sprintf('%05d/%s', ((int) $m[1]) + 1, $year);
+    }
+
     /**
      * Business rules
      */

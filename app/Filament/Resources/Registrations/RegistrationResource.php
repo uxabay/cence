@@ -31,6 +31,7 @@ class RegistrationResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+
         return RegistrationForm::configure($schema);
     }
 

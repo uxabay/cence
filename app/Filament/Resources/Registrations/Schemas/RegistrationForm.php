@@ -16,6 +16,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -38,6 +39,7 @@ class RegistrationForm
      */
     public static function configure(Schema $schema): Schema
     {
+
         return $schema
             ->components([
 
@@ -64,6 +66,16 @@ class RegistrationForm
                                     ->columns(3)
                                     ->compact()
                                     ->schema([
+
+                                        Hidden::make('registration_number_manual')
+                                            ->default(false)
+                                            ->dehydrated(false),
+
+                                        // Suppress flag: όταν το σύστημα κάνει set στο registration_number, να μην θεωρείται manual change
+                                        Hidden::make('registration_number_system_set')
+                                            ->default(false)
+                                            ->dehydrated(false),
+
                                         DatePicker::make('date')
                                             ->label('Ημερομηνία')
                                             ->required()
@@ -72,61 +84,85 @@ class RegistrationForm
                                             ->native(false)
                                             ->closeOnDateSelection()
                                             ->live()
-                                            // ✅ Αν αλλάξει ημερομηνία → ενημέρωση έτους
-                                            ->afterStateUpdated(function ($state, callable $set) {
-                                                if (filled($state)) {
-                                                    $set('year', Carbon::parse($state)->year);
+                                            ->afterStateHydrated(function ($state, callable $get, callable $set) {
+                                                // Φόρτωσε year από date
+                                                if (! filled($state)) {
+                                                    $state = today();
+                                                }
+
+                                                $year = Carbon::parse($state)->year;
+                                                $set('year', $year);
+
+                                                // Auto-suggest στο πρώτο load ΜΟΝΟ αν είναι κενό και δεν έχει γίνει manual override
+                                                if (blank($get('registration_number')) && ! $get('registration_number_manual')) {
+                                                    $set('registration_number_system_set', true);
+                                                    $set('registration_number', Registration::nextNumberForYear($year));
+                                                    $set('registration_number_system_set', false);
                                                 }
                                             })
-                                            // ✅ Αν ανοίγει υπάρχουσα εγγραφή → φέρνουμε το σωστό έτος
-                                            ->afterStateHydrated(function ($state, callable $set) {
-                                                if (filled($state)) {
-                                                    $set('year', Carbon::parse($state)->year);
+                                            ->afterStateUpdated(function ($state, callable $get, callable $set)  {
+                                                if (! filled($state)) {
+                                                    return;
                                                 }
+
+                                                $year = Carbon::parse($state)->year;
+                                                $set('year', $year);
+
+                                                // ✅ Auto-update όταν αλλάζει ημερομηνία, ΜΟΝΟ αν δεν είναι manual
+                                                if ($get('registration_number_manual')) {
+                                                    return;
+                                                }
+
+                                                $set('registration_number_system_set', true);
+                                                $set('registration_number', Registration::nextNumberForYear($year));
+                                                $set('registration_number_system_set', false);
                                             }),
 
+                                        /**
+                                         * registration_number:
+                                         * - ο χρήστης γράφει ελεύθερα
+                                         * - στο blur γίνεται format σε 00001/2026 (ή με year που έδωσε)
+                                         */
                                         TextInput::make('registration_number')
                                             ->label('Αριθμός Πρωτοκόλλου')
                                             ->required()
                                             ->maxLength(20)
                                             ->placeholder('π.χ. 00024/2025')
                                             ->columnSpan(1)
-                                            ->reactive()
-                                            ->default(function (callable $get) {
-                                                $year = $get('year') ?? now()->year;
-
-                                                // Βρίσκουμε το τελευταίο πρωτόκολλο για το συγκεκριμένο έτος
-                                                $last = \App\Models\Registration::where('year', $year)
-                                                    ->latest('id')
-                                                    ->value('registration_number');
-
-                                                if (! $last) {
-                                                    return sprintf('%05d/%s', 1, $year);
-                                                }
-
-                                                // Εξάγουμε τον αριθμό (πριν από το "/")
-                                                if (preg_match('/^(\d{1,})\//', $last, $matches)) {
-                                                    $nextNum = (int) $matches[1] + 1;
-                                                    return sprintf('%05d/%s', $nextNum, $year);
-                                                }
-
-                                                // Fallback
-                                                return sprintf('%05d/%s', 1, $year);
-                                            })
+                                            ->live(onBlur: true) // ✅ format μόνο όταν φύγει από το πεδίο
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                $year = $get('year') ?? now()->year;
+                                                // Αν έγινε set από σύστημα (auto-suggest), ΜΗΝ το θεωρείς manual και μην ξανα-formatάρεις
+                                                if ($get('registration_number_system_set')) {
+                                                    return;
+                                                }
 
                                                 if (blank($state)) {
                                                     return;
                                                 }
 
-                                                // Αν ο χρήστης γράψει κάτι όπως "24" ή "24/2025"
-                                                if (preg_match('/^(\d{1,})(?:\/(\d{4}))?$/', trim($state), $matches)) {
-                                                    $num = str_pad((int) $matches[1], 5, '0', STR_PAD_LEFT);
-                                                    $inputYear = $matches[2] ?? $year;
+                                                $year = (int) ($get('year') ?? now()->year);
+                                                $value = trim((string) $state);
+
+                                                // Δέχεται: "1" ή "1/2025" ή "00001/2025"
+                                                if (preg_match('/^(\d{1,})(?:\/(\d{4}))?$/', $value, $m)) {
+                                                    $num = str_pad((int) $m[1], 5, '0', STR_PAD_LEFT);
+                                                    $inputYear = isset($m[2]) ? (int) $m[2] : $year;
+
                                                     $formatted = sprintf('%s/%s', $num, $inputYear);
-                                                    $set('registration_number', $formatted);
+
+                                                    // Κλειδώνουμε manual από τη στιγμή που ο χρήστης το πείραξε
+                                                    $set('registration_number_manual', true);
+
+                                                    if ($formatted !== $value) {
+                                                        $set('registration_number', $formatted);
+                                                    }
+
+                                                    return;
                                                 }
+
+                                                // Αν γράψει κάτι εκτός pattern (π.χ. "Α-12"), απλά το αφήνουμε,
+                                                // αλλά κλειδώνουμε manual ώστε να μην το πατήσει το auto.
+                                                $set('registration_number_manual', true);
                                             }),
 
                                         TextInput::make('year')
