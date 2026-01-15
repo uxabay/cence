@@ -10,8 +10,10 @@ use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Auth;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable, HasRoles, SoftDeletes, LogsActivity;
 
@@ -94,5 +96,10 @@ class User extends Authenticatable
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->hasRole('Administrator');
     }
 }
