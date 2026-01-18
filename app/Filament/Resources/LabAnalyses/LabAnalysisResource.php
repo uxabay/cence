@@ -245,7 +245,15 @@ class LabAnalysisResource extends Resource
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->poll('live')
+            ->striped()
+            ->paginated([10, 20, 50])
+            ->defaultPaginationPageOption(10)
+            ->reorderable(false)
+            ->emptyStateHeading('Δεν υπάρχουν καταχωρημένες εγγραφές.')
+            ->emptyStateDescription('Δεν έχει δημιουργηθεί καμία εγγραφή ακόμη.')
+            ->emptyStateIcon('heroicon-o-document-text');
     }
 
 

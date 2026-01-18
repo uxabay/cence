@@ -91,11 +91,13 @@ class UsersTable
                 ->label('') // χωρίς label
                 ->tooltip('Ενέργειες'),
             ])
-            ->defaultPaginationPageOption(25)
-            ->paginated([10, 25, 50])
-            ->extremePaginationLinks()
-            ->poll('10s')
-            ->emptyStateHeading(('Δεν υπάρχουν χρήστες'))
-            ->emptyStateDescription('Δημιουργήστε έναν νέο χρήστη για να ξεκινήσετε.');            ;
+            ->poll('live')
+            ->striped()
+            ->paginated([10, 20, 50])
+            ->defaultPaginationPageOption(10)
+            ->reorderable(false)
+            ->emptyStateHeading('Δεν υπάρχουν καταχωρημένες εγγραφές.')
+            ->emptyStateDescription('Δεν έχει δημιουργηθεί καμία εγγραφή ακόμη.')
+            ->emptyStateIcon('heroicon-o-document-text');            ;
     }
 }

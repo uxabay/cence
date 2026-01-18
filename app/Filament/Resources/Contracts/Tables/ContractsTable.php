@@ -127,11 +127,13 @@ class ContractsTable
                     ForceDeleteBulkAction::make(),
                 ]),
             ])
-            ->poll('live')
             ->defaultSort('date_end', 'desc')
+            ->poll('live')
             ->striped()
-            ->paginated(['10', '25', '50'])
-            ->emptyStateHeading('Δεν υπάρχουν καταχωρημένες συμβάσεις.')
+            ->paginated([10, 20, 50])
+            ->defaultPaginationPageOption(10)
+            ->emptyStateHeading('Δεν υπάρχουν καταχωρημένες εγγραφές.')
+            ->emptyStateDescription('Δεν έχει δημιουργηθεί καμία εγγραφή ακόμη.')
             ->emptyStateIcon('heroicon-o-document-text');
     }
 }

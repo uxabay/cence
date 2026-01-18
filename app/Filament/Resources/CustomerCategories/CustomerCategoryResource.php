@@ -308,13 +308,14 @@ class CustomerCategoryResource extends Resource
             /**
              * --------------- TABLE CONFIGURATION ---------------
              */
-            ->striped()
-            ->defaultPaginationPageOption(25)
-            ->paginated([10, 25, 50, 100])
             ->poll('live')
-            ->reorderable(false)
-            ->emptyStateHeading('Δεν υπάρχουν κατηγορίες πελατών')
-            ->emptyStateDescription('Δημιουργήστε μια νέα κατηγορία για να ξεκινήσετε.');
+            ->striped()
+            ->paginated([10, 20, 50])
+            ->defaultPaginationPageOption(10)
+            ->emptyStateHeading('Δεν υπάρχουν καταχωρημένες εγγραφές.')
+            ->emptyStateDescription('Δεν έχει δημιουργηθεί καμία εγγραφή ακόμη.')
+            ->emptyStateIcon('heroicon-o-document-text');
+
     }
 
     public static function getPages(): array
