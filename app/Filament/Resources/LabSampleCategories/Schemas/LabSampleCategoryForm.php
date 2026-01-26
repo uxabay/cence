@@ -13,6 +13,8 @@ use Filament\Schemas\Schema; // Core Schema object for standalone files
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use App\Filament\Forms\Components\CodeInput;
+use App\Models\LabSampleCategory;
 
 
 class LabSampleCategoryForm
@@ -51,11 +53,11 @@ class LabSampleCategoryForm
                                                     ->columnSpan(2)
                                                     , // Hint removed
 
-                                                TextInput::make('code')
+                                                CodeInput::make('code')
                                                     ->label('Κωδικός')
+                                                    ->target(LabSampleCategory::class, 'code')
                                                     ->maxLength(50)
-                                                    ->columnSpan(1)
-                                                    , // Hint removed
+                                                    ->columnSpan(1),
                                             ]),
 
                                         Textarea::make('description')

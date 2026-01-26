@@ -9,6 +9,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
+use App\Filament\Forms\Components\CodeInput;
+use App\Models\ContractSampleCategory;
 
 class ContractSampleCategoryForm
 {
@@ -25,9 +27,10 @@ class ContractSampleCategoryForm
                         // Grid 3: Κωδικός, Όνομα, Κατάσταση - Όλα στην ίδια γραμμή
                         Grid::make(3)
                             ->schema([
-                                TextInput::make('code')
+                                CodeInput::make('code')
                                     ->label('Κωδικός')
                                     ->placeholder('Π.χ. ΚΑΤ-01')
+                                    ->target(ContractSampleCategory::class, 'code')
                                     ->maxLength(50)
                                     ->required()
                                     ->autofocus(),

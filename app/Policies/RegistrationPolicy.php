@@ -68,4 +68,9 @@ class RegistrationPolicy
         return $authUser->can('reorder_registration');
     }
 
+    public function export(AuthUser $authUser): bool
+    {
+        return $authUser->can('manage_financials');
+    }
+
 }

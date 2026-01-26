@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Contracts\RelationManagers;
 
 use App\Filament\Resources\Registrations\RegistrationResource;
+use App\Support\Pricing\RegistrationPricingPresenter;
 use Filament\Actions\CreateAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
@@ -56,29 +57,20 @@ class RegistrationsRelationManager extends RelationManager
                 | ΤΙΜΟΛΟΓΗΣΗ
                 |--------------------------------------------------------------------------
                 */
-                TextColumn::make('pricing_info')
+                TextColumn::make('pricing')
                     ->label('Τιμολόγηση')
                     ->badge()
-                    ->color(function ($record) {
-                        $type = $record->contractSample?->cost_calculation_type->value ?? null;
-                        return $type === 'variable' ? 'warning' : 'success';
-                    })
                     ->state(function ($record) {
-                        $type = $record->contractSample?->cost_calculation_type->value;
-
-                        return match ($type) {
-                            'variable' => 'Με βάση αναλύσεις',
-                            'fixed', 'fix' => 'Σταθερή Τιμή',
-                            default => '-'
-                        };
+                        return RegistrationPricingPresenter::from($record)
+                            ->toTable()['pricing_label'];
+                    })
+                    ->color(function ($record) {
+                        return RegistrationPricingPresenter::from($record)
+                            ->toTable()['pricing_color'];
                     })
                     ->description(function ($record) {
-                        if ($record->calculated_unit_price === null) {
-                            return '-';
-                        }
-
-                        return number_format($record->calculated_unit_price, 2)
-                            . ' € / δείγμα';
+                        return RegistrationPricingPresenter::from($record)
+                            ->toTable()['pricing_description'];
                     }),
 
                 /*
@@ -86,41 +78,19 @@ class RegistrationsRelationManager extends RelationManager
                 | ΟΙΚΟΝΟΜΙΚΟ ΑΠΟΤΕΛΕΣΜΑ
                 |--------------------------------------------------------------------------
                 */
-                TextColumn::make('financial_info')
+                TextColumn::make('pricing_total')
                     ->label('Οικονομικό Αποτέλεσμα')
                     ->badge()
-                    ->color('info')
+                    ->color('success')
                     ->state(function ($record) {
-                        $samples = $record->total_samples;
-                        $unit = $record->calculated_unit_price;
-
-                        if ($samples === null || $unit === null) {
-                            return '-';
-                        }
-
-                        return "{$samples} × " . number_format($unit, 2) . " €";
+                        return RegistrationPricingPresenter::from($record)
+                            ->toTable()['total'];
                     })
                     ->description(function ($record) {
-
-                        if ($record->calculated_total === null) {
-                            return '-';
-                        }
-
-                        return number_format($record->calculated_total, 2) . ' €';
-                    })
-                    ->tooltip(function ($record) {
-
-                        if ($record->analyses->isEmpty()) {
-                            return null;
-                        }
-
-                        return $record->analyses
-                            ->map(fn ($a) =>
-                                "• {$a->analysis_name} (" .
-                                number_format($a->analysis_price, 2) . " €)"
-                            )
-                            ->join("\n");
+                        return RegistrationPricingPresenter::from($record)
+                            ->toTable()['total'];
                     }),
+
 
             ])
             ->striped()

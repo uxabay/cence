@@ -273,6 +273,17 @@ class RegistrationForm
                                         Flex::make([
                                             Select::make('analysis_package_id')
                                                 ->label('Πακέτο αναλύσεων')
+                                                ->hidden(function (callable $get) {
+                                                    $sampleId = $get('contract_sample_id');
+                                                    if (! $sampleId) {
+                                                        return true;
+                                                    }
+
+                                                    $sample = ContractSample::find($sampleId);
+
+                                                    return $sample?->cost_calculation_type === CostCalculationTypeEnum::VARIABLE_COUNT;
+                                                })
+
                                                 ->options(fn ($get) =>
                                                     \App\Models\LabAnalysisPackage::query()
                                                         ->where('lab_sample_category_id', $get('lab_sample_category_id'))
@@ -344,6 +355,16 @@ class RegistrationForm
                                             ->dehydrated(true)   // ← ΚΡΙΣΙΜΟ
                                             ->live()             // ← εξασφαλίζει ότι το state ξαναγράφεται
                                             ->compact()
+                                            ->hidden(function (callable $get) {
+                                                $sampleId = $get('contract_sample_id');
+                                                if (! $sampleId) {
+                                                    return true;
+                                                }
+
+                                                $sample = ContractSample::find($sampleId);
+
+                                                return $sample?->cost_calculation_type === CostCalculationTypeEnum::VARIABLE_COUNT;
+                                            })
                                             ->table([
                                                 TableColumn::make('Ανάλυση')->alignLeft(),
                                                 TableColumn::make('Ονομασία Ανάλυσης')->alignLeft(),
@@ -373,6 +394,7 @@ class RegistrationForm
                                                     ->required()
                                                     ->native(false),
 
+
                                                 TextInput::make('analysis_name')
                                                     ->label('Ονομασία Ανάλυσης')
                                                     ->readOnly()
@@ -384,9 +406,24 @@ class RegistrationForm
                                                     ->required(),
                                             ])
                                             ->columns(3)
-                                            ->columnSpanFull()
+                                            ->columnSpanFull(),
 
+                                        TextInput::make('analyses_count')
+                                            ->label('Συνολικός αριθμός αναλύσεων')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->default(0)
+                                            ->required()
+                                            ->visible(function (callable $get) {
+                                                $sampleId = $get('contract_sample_id');
+                                                if (! $sampleId) {
+                                                    return false;
+                                                }
 
+                                                $sample = ContractSample::find($sampleId);
+
+                                                return $sample?->cost_calculation_type === CostCalculationTypeEnum::VARIABLE_COUNT;
+                                            }),
 
                                     ])
                                     ->columnSpanFull()
@@ -407,7 +444,14 @@ class RegistrationForm
                                             return true;
                                         }
 
-                                        return $sample->cost_calculation_type !== \App\Enums\CostCalculationTypeEnum::VARIABLE;
+                                        return ! in_array(
+                                            $sample->cost_calculation_type,
+                                            [
+                                                CostCalculationTypeEnum::VARIABLE,
+                                                CostCalculationTypeEnum::VARIABLE_COUNT,
+                                            ],
+                                            true
+                                        );
                                     }),
 
 
@@ -503,6 +547,11 @@ class RegistrationForm
                                                         ->body('Η επιλεγμένη κατηγορία δειγμάτων σύμβασης δεν περιλαμβάνει την κατηγορία δειγμάτων του εργαστηρίου.')
                                                         ->danger()
                                                         ->send();
+                                                }
+
+                                                if ($sample?->cost_calculation_type === CostCalculationTypeEnum::VARIABLE_COUNT) {
+                                                    $set('analyses', []);
+                                                    $set('analysis_package_id', null);
                                                 }
                                             })
                                             ->placeholder('Επιλέξτε κατηγορία δειγμάτων σύμβασης...')

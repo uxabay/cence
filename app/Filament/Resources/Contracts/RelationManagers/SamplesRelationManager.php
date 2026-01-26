@@ -110,12 +110,13 @@ class SamplesRelationManager extends RelationManager
                                 Select::make('cost_calculation_type')
                                     ->label('Τύπος Κόστους')
                                     ->options([
-                                        'fix'      => 'Σταθερή Τιμή',
-                                        'variable' => 'Με βάση Αναλύσεις',
+                                        'fix'            => 'Σταθερή Τιμή',
+                                        'variable'       => 'Με βάση Αναλύσεις',
+                                        'variable_count' => 'Με βάση Αριθμό Αναλύσεων',
                                     ])
                                     ->required()
                                     ->default('fix')
-                                    ->live() // Added live to dynamically show max_analyses
+                                    ->live()
                                     ->columnSpan(1),
 
                                 TextInput::make('price')
@@ -136,11 +137,22 @@ class SamplesRelationManager extends RelationManager
                                     )
                                     ->columnSpan(1),
 
+                                TextInput::make('analysis_unit_price')
+                                    ->label('Τιμή Ανάλυσης')
+                                    ->numeric()
+                                    ->prefix('€')
+                                    ->default(0)
+                                    ->required(fn (Get $get) => $get('cost_calculation_type') === 'variable_count')
+                                    ->visible(fn (Get $get) => $get('cost_calculation_type') === 'variable_count')
+                                    ->columnSpan(1),
+
                                 TextInput::make('max_analyses')
                                     ->label('Μέγιστο Όριο Αναλύσεων')
                                     ->numeric()
                                     ->default(0)
-                                    ->visible(fn (Get $get) => $get('cost_calculation_type') === 'variable')
+                                    ->visible(fn (Get $get) =>
+                                        in_array($get('cost_calculation_type'), ['variable', 'variable_count'])
+                                    )
                                     ->helperText('Αν οι αναλύσεις υπερβούν το όριο, εφαρμόζεται η σταθερή τιμή.')
                                     ->columnSpan(1),
 
@@ -280,41 +292,26 @@ class SamplesRelationManager extends RelationManager
                 TextColumn::make('cost_calculation_type')
                     ->label('Τύπος Κόστους')
                     ->badge()
-                    ->sortable()
-                    ->formatStateUsing(function ($state) {
-                        return match ($state) {
-                            'fix' => 'Σταθερή Τιμή',
-                            'variable' => 'Με βάση αναλύσεις',
-                            default => '-',
-                        };
-                    })
-                    ->color(function ($state) {
-                        return match ($state) {
-                            'fix' => 'gray',
-                            'variable' => 'blue',
-                            default => 'gray',
-                        };
-                    })
-                    ->icon(function ($state) {
-                        return match ($state) {
-                            'fix' => 'heroicon-o-lock-closed',
-                            'variable' => 'heroicon-o-beaker',
-                            default => null,
-                        };
-                    }),
+                    ->formatStateUsing(fn ($state) => $state?->getLabel() ?? '—')
+                    ->color(fn ($state) => $state?->getColor() ?? 'gray')
+                    ->icon(fn ($state) => $state?->getIcon()),
 
                 TextColumn::make('max_analyses')
                     ->label('Όριο Αναλύσεων')
-                    ->sortable()
                     ->alignCenter()
-                    ->formatStateUsing(fn ($state) => $state ?: '—'),
+                    ->formatStateUsing(fn ($state) => $state ?: '—')
+                    ->visible(fn ($record) =>
+                        filled($record?->cost_calculation_type)
+                        && in_array($record->cost_calculation_type, ['variable', 'variable_count'])
+                    ),
 
                 TextColumn::make('status')
                     ->label('Κατάσταση')
                     ->badge()
                     ->color(fn ($state) => $state?->getColor())
                     ->icon(fn ($state) => $state?->getIcon())
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
 
             ->filters([

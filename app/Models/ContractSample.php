@@ -28,12 +28,13 @@ class ContractSample extends Model
         'year',
         'forecasted_samples',
         'price',
+        'analysis_unit_price',      // ← v1.1.0
         'forecasted_amount',
         'currency_code',
         'remarks',
         'status',
-        'cost_calculation_type',   // ← Νέο
-        'max_analyses',            // ← Νέο
+        'cost_calculation_type',    // ← Νέο
+        'max_analyses',             // ← Νέο
         'created_by',
         'updated_by',
     ];
@@ -44,6 +45,7 @@ class ContractSample extends Model
         'year' => 'integer',
         'forecasted_samples' => 'integer',
         'price' => 'decimal:2',
+        'analysis_unit_price' => 'decimal:2',
         'forecasted_amount' => 'decimal:2',
         'cost_calculation_type' => CostCalculationTypeEnum::class, // ← ΝΕΟ
     ];

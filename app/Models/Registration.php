@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RecordStatusEnum;
+use App\Enums\CostCalculationTypeEnum;
 use App\Models\LabAnalysis;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,12 @@ use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int|null $analyses_count
+ * @property float|null $analysis_unit_price_snapshot
+ * @property float|null $calculated_unit_price
+ * @property float|null $calculated_total
+ */
 class Registration extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
@@ -30,6 +37,8 @@ class Registration extends Model
         'not_valid_samples',
         'total_samples',
         'unit_price_snapshot',
+        'analysis_unit_price_snapshot', // ← v1.1.0
+        'analyses_count',               // ← v1.1.0
         'currency_code',
         'year',
         'comments',
@@ -45,6 +54,8 @@ class Registration extends Model
         'not_valid_samples' => 'integer',
         'total_samples' => 'integer',
         'unit_price_snapshot' => 'decimal:2',
+        'analysis_unit_price_snapshot' => 'decimal:2',  // ← v1.1.0
+        'analyses_count' => 'integer',                  // ← v1.1.0
         'calculated_unit_price' => 'decimal:2',   // ← ΝΕΟ
         'calculated_total' => 'decimal:2',        // ← ΝΕΟ
         'status' => RecordStatusEnum::class,
@@ -217,8 +228,12 @@ class Registration extends Model
 
     public function calculateCost(): void
     {
-        // Χωρίς contract sample → δεν υπολογίζουμε τίποτα
-        if (!$this->contractSample) {
+        /*
+        |--------------------------------------------------------------------------
+        | Guard: χωρίς ContractSample δεν υπολογίζουμε κόστος
+        |--------------------------------------------------------------------------
+        */
+        if (! $this->contractSample) {
             $this->calculated_unit_price = null;
             $this->calculated_total = null;
             return;
@@ -226,60 +241,83 @@ class Registration extends Model
 
         $sample = $this->contractSample;
 
-        $price = (float) $sample->price;                // fix price
-        $max = (int) $sample->max_analyses;             // threshold
-        $isVariable = $sample->cost_calculation_type->value === 'variable';
-
-        // Πλέον analyses = RegistrationAnalysis models
-        $analyses = $this->analyses;
-        $analysesCount = $analyses->count();
-
-        // sum από το RegistrationAnalysis → analysis_price
-        $sumAnalyses = $analyses->sum('analysis_price');
-
-        // αποθηκεύουμε τον αριθμό αναλύσεων
-        $this->analyses_count = $analysesCount;
+        // Βασικά δεδομένα σύμβασης
+        $fixPrice = (float) $sample->price;                 // fix τιμή δείγματος
+        $maxAnalyses = (int) $sample->max_analyses;         // όριο αναλύσεων
+        $type = $sample->cost_calculation_type;             // τρόπος υπολογισμού
 
         /*
         |--------------------------------------------------------------------------
         | FIX
         |--------------------------------------------------------------------------
+        | Πάντα fix τιμή ανά δείγμα
         */
-        if (!$isVariable) {
-            $this->calculated_unit_price = $price;
-            $this->calculated_total = $price * $this->total_samples;
+        if ($type === \App\Enums\CostCalculationTypeEnum::FIX) {
+            $this->calculated_unit_price = $fixPrice;
+            $this->calculated_total = $fixPrice * $this->total_samples;
             return;
         }
 
         /*
         |--------------------------------------------------------------------------
-        | VARIABLE
+        | VARIABLE_COUNT (NEW)
         |--------------------------------------------------------------------------
+        | Ο χρήστης δηλώνει συνολικό αριθμό αναλύσεων.
+        | Κάθε ανάλυση τιμολογείται με fix τιμή ανάλυσης (snapshot).
+        | Αν ξεπεραστεί το όριο → fallback σε FIX.
         */
+        if ($type === \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT) {
 
-        // Χωρίς αναλύσεις → FIX
-        if ($analysesCount === 0) {
-            $this->calculated_unit_price = $price;
-            $this->calculated_total = $price * $this->total_samples;
-            return;
-        }
+            $analysesCount = (int) ($this->analyses_count ?? 0);
+            $analysisUnitPrice = (float) ($this->analysis_unit_price_snapshot ?? 0);
 
-        // Αν υπάρχει όριο και ξεπεραστεί → FIX
-        if ($max > 0 && $analysesCount > $max) {
-            $this->calculated_unit_price = $price;
-            $this->calculated_total = $price * $this->total_samples;
+            // Χωρίς αναλύσεις ή υπέρβαση ορίου → FIX
+            if (
+                $analysesCount === 0 ||
+                ($maxAnalyses > 0 && $analysesCount > $maxAnalyses)
+            ) {
+                $this->calculated_unit_price = $fixPrice;
+                $this->calculated_total = $fixPrice * $this->total_samples;
+                return;
+            }
+
+            // Υπολογισμός: αριθμός αναλύσεων × τιμή ανάλυσης
+            $unitPrice = $analysesCount * $analysisUnitPrice;
+
+            $this->calculated_unit_price = $unitPrice;
+            $this->calculated_total = $unitPrice * $this->total_samples;
             return;
         }
 
         /*
         |--------------------------------------------------------------------------
-        | VARIABLE – άθροισμα των analysis_price
+        | VARIABLE (LEGACY)
         |--------------------------------------------------------------------------
+        | Αναλύσεις καταχωρούνται μία-μία (RegistrationAnalysis).
+        | Υπολογισμός από άθροισμα analysis_price.
+        | Αν ξεπεραστεί το όριο → fallback σε FIX.
         */
+        $analyses = $this->analyses;
+        $analysesCount = $analyses->count();
+        $sumAnalyses = $analyses->sum('analysis_price');
+
+        // αποθηκεύουμε snapshot αριθμού αναλύσεων
+        $this->analyses_count = $analysesCount;
+
+        // Χωρίς αναλύσεις ή υπέρβαση ορίου → FIX
+        if (
+            $analysesCount === 0 ||
+            ($maxAnalyses > 0 && $analysesCount > $maxAnalyses)
+        ) {
+            $this->calculated_unit_price = $fixPrice;
+            $this->calculated_total = $fixPrice * $this->total_samples;
+            return;
+        }
+
+        // Υπολογισμός από άθροισμα τιμών αναλύσεων
         $this->calculated_unit_price = $sumAnalyses;
         $this->calculated_total = $sumAnalyses * $this->total_samples;
     }
-
 
     public function getCustomerContractInfoAttribute(): string
     {
@@ -332,4 +370,5 @@ class Registration extends Model
     {
         return true;
     }
+
 }

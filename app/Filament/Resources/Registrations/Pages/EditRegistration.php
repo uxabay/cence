@@ -30,64 +30,96 @@ class EditRegistration extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record;
+        $type = $record->contractSample?->cost_calculation_type;
 
-        // Ξαναφορτώνουμε τις αναλύσεις που μόλις ενημερώθηκαν
-        $record->load('analyses');
+        if ($type === \App\Enums\CostCalculationTypeEnum::VARIABLE) {
+            $record->load('analyses');
+        }
 
-        // Υπολογίζουμε το κόστος
         $record->calculateCost();
-
-        $record->saveQuietly(); // αντί για save()
+        $record->saveQuietly();
     }
 
     protected function handleRecordUpdate($record, array $data): Registration
     {
         return DB::transaction(function () use ($record, $data) {
 
-            // 1) Update parent record fields
-            $record->update(Arr::except($data, ['analyses', 'analysis_package_id']));
+            // 1) Update parent (χωρίς analyses)
+            $record->update(
+                Arr::except($data, ['analyses', 'analysis_package_id'])
+            );
 
-            // 2) Normalize analysis rows
-            $rows = collect($data['analyses'] ?? [])
-                ->filter(fn ($r) => filled($r['lab_analysis_id'] ?? null))
-                ->values();
+            $contractSample = $record->contractSample;
+            $type = $contractSample?->cost_calculation_type;
 
-            $keepIds = $rows->pluck('lab_analysis_id')->unique()->values();
+            /*
+            |--------------------------------------------------------------------------
+            | VARIABLE (legacy) → πλήρες sync αναλύσεων
+            |--------------------------------------------------------------------------
+            */
+            if ($type === \App\Enums\CostCalculationTypeEnum::VARIABLE) {
 
-            // 3) Restore-or-update (or create)
-            foreach ($rows as $r) {
-                $labAnalysisId = (int) $r['lab_analysis_id'];
+                $rows = collect($data['analyses'] ?? [])
+                    ->filter(fn ($r) => filled($r['lab_analysis_id'] ?? null))
+                    ->values();
 
-                $payload = [
-                    'analysis_name'  => (string) ($r['analysis_name'] ?? ''),
-                    'analysis_price' => (float)  ($r['analysis_price'] ?? 0),
-                ];
+                $keepIds = $rows->pluck('lab_analysis_id')->unique()->values();
 
-                $existing = RegistrationAnalysis::withTrashed()
-                    ->where('registration_id', $record->id)
-                    ->where('lab_analysis_id', $labAnalysisId)
-                    ->first();
+                foreach ($rows as $r) {
+                    $labAnalysisId = (int) $r['lab_analysis_id'];
 
-                if ($existing) {
-                    if ($existing->trashed()) {
-                        $existing->restore();
+                    $payload = [
+                        'analysis_name'  => (string) ($r['analysis_name'] ?? ''),
+                        'analysis_price' => (float)  ($r['analysis_price'] ?? 0),
+                    ];
+
+                    $existing = RegistrationAnalysis::withTrashed()
+                        ->where('registration_id', $record->id)
+                        ->where('lab_analysis_id', $labAnalysisId)
+                        ->first();
+
+                    if ($existing) {
+                        if ($existing->trashed()) {
+                            $existing->restore();
+                        }
+                        $existing->fill($payload)->save();
+                    } else {
+                        RegistrationAnalysis::create([
+                            'registration_id' => $record->id,
+                            'lab_analysis_id' => $labAnalysisId,
+                            ...$payload,
+                        ]);
                     }
-
-                    $existing->fill($payload)->save();
-                } else {
-                    RegistrationAnalysis::create([
-                        'registration_id' => $record->id,
-                        'lab_analysis_id' => $labAnalysisId,
-                        ...$payload,
-                    ]);
                 }
+
+                // soft-delete όσα αφαιρέθηκαν
+                RegistrationAnalysis::query()
+                    ->where('registration_id', $record->id)
+                    ->whereNotIn('lab_analysis_id', $keepIds)
+                    ->delete();
+
+                // reload μόνο εδώ
+                $record->load('analyses');
             }
 
-            // 4) Soft-delete removed analyses
-            RegistrationAnalysis::query()
-                ->where('registration_id', $record->id)
-                ->whereNotIn('lab_analysis_id', $keepIds)
-                ->delete();
+            /*
+            |--------------------------------------------------------------------------
+            | VARIABLE_COUNT → snapshot fields μόνο
+            |--------------------------------------------------------------------------
+            */
+            if ($type === \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT) {
+
+                $record->analyses_count = (int) ($data['analyses_count'] ?? 0);
+
+                $record->analysis_unit_price_snapshot =
+                    (float) ($contractSample?->analysis_unit_price ?? 0);
+            }
+
+            // FIX → τίποτα extra
+
+            // Τελικός υπολογισμός
+            $record->calculateCost();
+            $record->saveQuietly();
 
             return $record->refresh();
         });

@@ -70,30 +70,60 @@ class CreateRegistration extends CreateRecord
     {
         return DB::transaction(function () use ($data) {
 
-            // 1) Create parent
-            $record = Registration::create(Arr::except($data, ['analyses', 'analysis_package_id']));
+            // 1) Create Registration (χωρίς analyses)
+            $record = Registration::create(
+                Arr::except($data, ['analyses', 'analysis_package_id'])
+            );
 
-            // 2) Create analyses (no need for withTrashed here, but ok if you keep it consistent)
-            $rows = collect($data['analyses'] ?? [])
-                ->filter(fn ($r) => filled($r['lab_analysis_id'] ?? null))
-                ->values();
+            $contractSample = $record->contractSample;
+            $calculationType = $contractSample?->cost_calculation_type;
 
-            foreach ($rows as $r) {
-                RegistrationAnalysis::create([
-                    'registration_id' => $record->id,
-                    'lab_analysis_id' => (int) $r['lab_analysis_id'],
-                    'analysis_name'   => (string) ($r['analysis_name'] ?? ''),
-                    'analysis_price'  => (string) ($r['analysis_price'] ?? 0),
-                ]);
+            /*
+            |--------------------------------------------------------------------------
+            | VARIABLE (legacy) → δημιουργία αναλύσεων μία-μία
+            |--------------------------------------------------------------------------
+            */
+            if ($calculationType === \App\Enums\CostCalculationTypeEnum::VARIABLE) {
+
+                $rows = collect($data['analyses'] ?? [])
+                    ->filter(fn ($r) => filled($r['lab_analysis_id'] ?? null))
+                    ->values();
+
+                foreach ($rows as $r) {
+                    RegistrationAnalysis::create([
+                        'registration_id' => $record->id,
+                        'lab_analysis_id' => (int) $r['lab_analysis_id'],
+                        'analysis_name'   => (string) ($r['analysis_name'] ?? ''),
+                        'analysis_price'  => (string) ($r['analysis_price'] ?? 0),
+                    ]);
+                }
+
+                // φορτώνουμε analyses μόνο εδώ
+                $record->load('analyses');
             }
 
-            // 3) optional: calculate cost now if you want
-            $record->load('analyses');
+            /*
+            |--------------------------------------------------------------------------
+            | VARIABLE_COUNT → snapshot δεδομένων (χωρίς RegistrationAnalysis)
+            |--------------------------------------------------------------------------
+            */
+            if ($calculationType === \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT) {
+
+                $record->analyses_count = (int) ($data['analyses_count'] ?? 0);
+
+                $record->analysis_unit_price_snapshot =
+                    (float) ($contractSample?->analysis_unit_price ?? 0);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Τελικός υπολογισμός κόστους (κοινός για όλα τα modes)
+            |--------------------------------------------------------------------------
+            */
             $record->calculateCost();
             $record->saveQuietly();
 
             return $record->refresh();
         });
     }
-
 }

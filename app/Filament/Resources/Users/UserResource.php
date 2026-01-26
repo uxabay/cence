@@ -25,7 +25,7 @@ class UserResource extends Resource
     protected static ?string $model = User::class;
     protected static ?string $modelLabel = 'Χρήστη';
     protected static ?string $pluralModelLabel = 'Χρήστες';
-    protected static ?string $navigationLabel = 'Διαχείριση Χρήστών';
+    protected static ?string $navigationLabel = 'Διαχείριση Χρηστών';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 

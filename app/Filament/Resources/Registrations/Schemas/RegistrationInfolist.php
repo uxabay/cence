@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Registrations\Schemas;
 
 use App\Models\Registration;
+use App\Filament\Resources\Registrations\Schemas\Components\RegistrationPricingSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
@@ -103,6 +104,9 @@ class RegistrationInfolist
                                 ->icon('heroicon-o-chart-bar')
                                 ->description('Συνοπτική παρουσίαση των αναλύσεων του πρωτοκόλλου')
                                 ->compact()
+                                ->hidden(function (Registration $record) {
+                                    return $record->contractSample?->cost_calculation_type !== \App\Enums\CostCalculationTypeEnum::VARIABLE;
+                                })
                                 ->schema([
 
                                     Grid::make(3)->schema([
@@ -112,7 +116,6 @@ class RegistrationInfolist
                                             ->badge()
                                             ->color('info')
                                             ->placeholder('0')
-                                            ->getStateUsing(fn (Registration $record) => $record->analyses()->count())
                                             ->columnSpan(1),
                                     ]),
 
@@ -192,13 +195,25 @@ class RegistrationInfolist
                                     TextEntry::make('contractSample.cost_calculation_type')
                                         ->label('Τύπος Κόστους')
                                         ->badge()
-                                        ->color(fn ($state) =>
-                                            $state === 'variable' ? 'warning' : 'success'
-                                        ),
+                                        ->color(fn ($state) => match ($state) {
+                                            \App\Enums\CostCalculationTypeEnum::VARIABLE => 'warning',
+                                            \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT => 'info',
+                                            default => 'success',
+                                        }),
 
                                     TextEntry::make('contractSample.max_analyses')
                                         ->label('Μέγιστο Όριο Αναλύσεων')
-                                        ->placeholder('-'),
+                                        ->placeholder('-')
+                                        ->hidden(fn (Registration $record) =>
+                                            ! in_array(
+                                                $record->contractSample?->cost_calculation_type,
+                                                [
+                                                    \App\Enums\CostCalculationTypeEnum::VARIABLE,
+                                                    \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT,
+                                                ],
+                                                true
+                                            )
+                                        ),
 
                                     TextEntry::make('customer_contract_info')
                                         ->label('Πληροφορίες Σύμβασης Πελάτη')
@@ -211,25 +226,8 @@ class RegistrationInfolist
                             | Οικονομικά Πρωτοκόλλου – Updated
                             |--------------------------------------------------------------------------
                             */
-                            Section::make('Οικονομικά Πρωτοκόλλου')
-                                ->icon('heroicon-o-currency-euro')
-                                ->compact()
-                                ->schema([
-                                    Grid::make(1)->schema([
-                                        TextEntry::make('calculated_unit_price')
-                                            ->label('Τιμή Δείγματος (€)')
-                                            ->numeric(2)
-                                            ->placeholder('-')
-                                            ->columnSpanFull(),
+                            RegistrationPricingSection::make(),
 
-                                        TextEntry::make('calculated_total')
-                                            ->label('Τελικό Ποσό (€)')
-                                            ->numeric(2)
-                                            ->weight('bold')
-                                            ->color('success')
-                                            ->columnSpanFull(),
-                                    ]),
-                                ]),
 
                             /*
                             |--------------------------------------------------------------------------

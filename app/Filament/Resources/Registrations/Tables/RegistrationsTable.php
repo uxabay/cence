@@ -13,6 +13,8 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +23,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Forms\Components\DatePicker;
 use App\Enums\RecordStatusEnum;
+use App\Filament\Exports\RegistrationExporter;
 use App\Models\Registration;
 use App\Filament\Resources\Registrations\RegistrationResource;
 
@@ -105,6 +108,12 @@ class RegistrationsTable
 
                 TrashedFilter::make(),
             ])
+            ->headerActions([
+                ExportAction::make()
+                    ->label('Εξαγωγή εγγραφών')
+                    ->exporter(RegistrationExporter::class)
+                    ->authorize('export'),
+            ])
 
             ->recordActions([
                 ActionGroup::make([
@@ -123,6 +132,10 @@ class RegistrationsTable
 
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exporter(RegistrationExporter::class)
+                        ->label('Εξαγωγή Επιλεγμένων')
+                        ->authorize('export'),
                     DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                     ForceDeleteBulkAction::make(),
