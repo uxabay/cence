@@ -5,9 +5,12 @@ namespace App\Filament\Widgets;
 use App\Models\Registration;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class SampleIntakeStackedChart extends ChartWidget
 {
+    use HasWidgetShield;
+    
     protected ?string $heading = 'Εβδομαδιαία Ροή Δειγμάτων (Τελευταίες 5 Εβδομάδες)';
     protected static ?int $sort = 20;
     protected int|string|array $columnSpan = 2;

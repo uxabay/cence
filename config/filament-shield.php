@@ -194,6 +194,8 @@ return [
         'exclude' => [
             \Filament\Pages\Dashboard::class,
             \App\Filament\Pages\ForcePasswordReset::class,
+            \App\Filament\Pages\ContractNotificationSettingsPage::class,
+            \App\Filament\Pages\SystemInfo::class,
         ],
     ],
 
@@ -231,6 +233,7 @@ return [
     'custom_permissions' => [
         'manage_roles',
         'manage_financials',
+        'manage_notification_settings',
         'view_revisions',
         'create_revisions',
         'approve_revisions',

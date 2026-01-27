@@ -5,9 +5,12 @@ namespace App\Filament\Widgets;
 use App\Models\Contract;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class StatsOverview extends StatsOverviewWidget
 {
+    use HasWidgetShield;
+    
     public function getColumns(): int | array
     {
         return [

@@ -11,6 +11,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Pages\SettingsPage;
+use Illuminate\Support\Facades\Auth;
 use BackedEnum;
 use UnitEnum;
 
@@ -21,6 +22,11 @@ class ContractNotificationSettingsPage extends SettingsPage
     protected static string|UnitEnum|null $navigationGroup = 'Σύστημα';
     protected static ?string $navigationLabel = 'Ειδοποιήσεις Συμβάσεων';
     protected static ?string $title = 'Ρυθμίσεις Ειδοποιήσεων Συμβάσεων';
+
+    public static function canAccess(): bool
+    {
+        return Auth::User()->can('manage_notification_settings') ?? false;
+    }
 
     public function form(Schema $schema): Schema
     {

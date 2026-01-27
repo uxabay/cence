@@ -6,9 +6,12 @@ use App\Models\CustomerCategory;
 use App\Models\Registration;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class CustomerCategorySampleDistributionChart extends ChartWidget
 {
+    use HasWidgetShield;
+    
     protected ?string $heading = 'Δείγματα ανά Κατηγορία Πελάτη (Τελευταίες 5 Εβδομάδες)';
     protected static ?int $sort = 30;
     protected int|string|array $columnSpan = 2;

@@ -4,26 +4,25 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 
 class EnsurePasswordResetIsDone
 {
     public function handle(Request $request, Closure $next)
     {
-        // Αν δεν υπάρχει συνδεδεμένος χρήστης, προχώρησε
-        if (! Auth::hasUser()) {
+        $auth = Filament::auth();
+
+        if (! $auth->check()) {
             return $next($request);
         }
 
-        $user = Auth::user();
+        $user = $auth->user();
 
-        // Αγνόησε το route της αλλαγής κωδικού για να μην δημιουργηθεί loop
-        if ($request->routeIs('filament.admin.pages.force-password-reset')) {
-            return $next($request);
-        }
-
-        // Αν το flag είναι true, ανακατεύθυνση στην υποχρεωτική αλλαγή κωδικού
-        if ($user->force_password_reset) {
+        if (
+            Filament::auth()->check()
+            && Filament::auth()->user()->force_password_reset
+            && ! request()->routeIs('filament.admin.pages.force-password-reset')
+        ) {
             return redirect()->route('filament.admin.pages.force-password-reset');
         }
 

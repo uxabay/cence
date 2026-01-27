@@ -85,6 +85,7 @@ return [
         */
         'manage_roles'                => 'Διαχείριση ρόλων χρηστών',
         'manage_financials'           => 'Διαχείριση οικονομικών στοιχείων',
+        'manage_notification_settings'=> 'Διαχείριση ειδοποιήσεων',
         'view_revisions'              => 'Προβολή αναθεωρήσεων',
         'create_revisions'            => 'Δημιουργία αναθεωρήσεων',
         'approve_revisions'           => 'Έγκριση αναθεωρήσεων',

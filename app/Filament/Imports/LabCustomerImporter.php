@@ -4,13 +4,13 @@ namespace App\Filament\Imports;
 
 use App\Models\LabCustomer;
 use App\Models\CustomerCategory;
-use App\Models\LabCustomerEmail;
 use App\Enums\CustomerStatusEnum;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
 
 class LabCustomerImporter extends Importer
 {
@@ -31,16 +31,55 @@ class LabCustomerImporter extends Importer
                 ->rules(['required', 'max:255'])
                 ->example('Δήμος Καρδίτσας'),
 
+            /*
+            |--------------------------------------------------------------------------
+            | 🟦 Κατηγορία Πελάτη (with normalization)
+            |--------------------------------------------------------------------------
+            */
             ImportColumn::make('customer_category_id')
                 ->label('Κατηγορία')
+                ->requiredMapping()
+                ->rules([
+                    'required',
+                    function (string $attribute, $value, $fail): void {
+                        $normalized = Str::of($value)
+                            ->lower()
+                            ->ascii()
+                            ->squish();
+
+                        $exists = CustomerCategory::query()
+                            ->get()
+                            ->first(fn ($category) =>
+                                Str::of($category->name)
+                                    ->lower()
+                                    ->ascii()
+                                    ->squish() === $normalized
+                            );
+
+                        if (! $exists) {
+                            $fail(
+                                'Η κατηγορία πελάτη δεν βρέθηκε. '
+                                . 'Χρησιμοποιήστε το όνομα όπως είναι καταχωρημένο στο σύστημα.'
+                            );
+                        }
+                    },
+                ])
                 ->relationship(
                     name: 'category',
                     resolveUsing: fn (?string $state) =>
-                        CustomerCategory::where('name', $state)->first()
+                        CustomerCategory::all()
+                            ->first(fn ($category) =>
+                                Str::of($category->name)
+                                    ->lower()
+                                    ->ascii()
+                                    ->squish()
+                                    === Str::of($state ?? '')
+                                        ->lower()
+                                        ->ascii()
+                                        ->squish()
+                            )
                 )
-                ->requiredMapping()
-                ->rules(['required'])
-                ->helperText('Αναζητείται με βάση το όνομα της κατηγορίας (όχι το ID).')
+                ->helperText('Συμπληρώστε το όνομα της κατηγορίας (π.χ. Δήμοι, Νοσοκομεία).')
                 ->example('Δήμοι'),
 
             ImportColumn::make('status')
@@ -71,12 +110,13 @@ class LabCustomerImporter extends Importer
             ImportColumn::make('phone')
                 ->label('Τηλέφωνο')
                 ->rules(['max:50'])
-                ->castStateUsing(fn (?string $state) => $state ? preg_replace('/[^0-9+]/', '', $state) : null)
+                ->castStateUsing(fn (?string $state) =>
+                    $state ? preg_replace('/[^0-9+]/', '', $state) : null
+                )
                 ->example('+302410123456'),
 
             ImportColumn::make('email_primary')
                 ->label('Κύριο Email')
-                ->email()
                 ->rules(['nullable', 'email', 'max:255'])
                 ->example('info@karditsa.gr')
                 ->helperText('Το κύριο email επικοινωνίας του πελάτη.'),
@@ -91,7 +131,10 @@ class LabCustomerImporter extends Importer
                     ->values()
                     ->toArray()
                 )
-                ->helperText('Πολλαπλές διευθύνσεις χωρισμένες με κόμμα. π.χ. info@domain.gr, support@domain.gr.')
+                ->helperText(
+                    'Πολλαπλές διευθύνσεις χωρισμένες με κόμμα '
+                    . '(π.χ. info@domain.gr, support@domain.gr).'
+                )
                 ->example('mayor@karditsa.gr, press@karditsa.gr')
                 ->fillRecordUsing(function (LabCustomer $record, array $emails): void {
                     if (empty($emails)) {
@@ -147,12 +190,14 @@ class LabCustomerImporter extends Importer
 
             /*
             |--------------------------------------------------------------------------
-            | 🟪 Λοιπά στοιχεία
+            | 🟪 Λοιπά
             |--------------------------------------------------------------------------
             */
             ImportColumn::make('notes')
                 ->label('Σημειώσεις')
-                ->castStateUsing(fn (?string $state) => $state ? trim(preg_replace("/\r\n|\r|\n/", ' ', $state)) : null)
+                ->castStateUsing(fn (?string $state) =>
+                    $state ? trim(preg_replace("/\r\n|\r|\n/", ' ', $state)) : null
+                )
                 ->example('Σχόλια ή πρόσθετες πληροφορίες για τον πελάτη.'),
         ];
     }
@@ -171,11 +216,9 @@ class LabCustomerImporter extends Importer
             $this->record->updated_by = Auth::id();
         }
 
-        // Αν υπάρχει κύριο email στο import, ενημερώνεται ή δημιουργείται
-        if (!empty($this->data['email_primary'])) {
+        if (! empty($this->data['email_primary'])) {
             $this->record->email_primary = $this->data['email_primary'];
 
-            // Δημιουργία ή ενημέρωση στη σχετική λίστα emails
             $this->record->emails()->updateOrCreate(
                 ['email' => $this->data['email_primary']],
                 [
@@ -204,7 +247,9 @@ class LabCustomerImporter extends Importer
             . ' γραμμές εισήχθησαν.';
 
         if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' ' . Number::format($failedRowsCount) . ' γραμμές απέτυχαν να εισαχθούν.';
+            $body .= ' '
+                . Number::format($failedRowsCount)
+                . ' γραμμές απέτυχαν να εισαχθούν.';
         }
 
         return $body;

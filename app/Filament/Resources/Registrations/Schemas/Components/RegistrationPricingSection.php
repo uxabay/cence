@@ -7,6 +7,7 @@ use App\Support\Pricing\RegistrationPricingPresenter;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Illuminate\Support\Facades\Auth;
 
 final class RegistrationPricingSection
 {
@@ -14,6 +15,7 @@ final class RegistrationPricingSection
     {
         return Section::make('Οικονομικά Πρωτοκόλλου')
             ->icon('heroicon-o-currency-euro')
+            ->visible(fn (): bool => Auth::user()?->can('manage_financials') ?? false)
             ->compact()
             ->schema([
                 Grid::make(1)->schema([
