@@ -38,11 +38,9 @@ class Contract extends Model
         'date_end' => 'date',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Boot events for audit fields
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Populate audit fields when creating/updating records.
+     */
     protected static function booted(): void
     {
         static::creating(function ($model) {
@@ -59,11 +57,9 @@ class Contract extends Model
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Activity Log
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Configure Spatie activity log defaults for contracts.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -72,11 +68,9 @@ class Contract extends Model
             ->setDescriptionForEvent(fn (string $eventName) => "Contract record has been {$eventName}");
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Model relationships.
+     */
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class, 'contract_id');
@@ -112,11 +106,9 @@ class Contract extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Query scopes.
+     */
     public function scopeActive($query)
     {
         return $query->where('status', RecordStatusEnum::Active);
@@ -140,11 +132,9 @@ class Contract extends Model
         return $query;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Accessors & Helpers
-    |--------------------------------------------------------------------------
-    */
+    /**
+     * Accessors & helper methods.
+     */
     public function refreshAndCheckNotifications(): void
     {
         app(\App\Services\Contracts\ContractNotificationService::class)
@@ -164,7 +154,7 @@ class Contract extends Model
     }
 
     /**
-     * Συνολικά προϋπολογισμένα ποσά
+     * Total forecasted amount across all samples.
      */
     public function getForecastedAmountAttribute(): float
     {
@@ -172,13 +162,13 @@ class Contract extends Model
     }
 
     /**
-     * Συγκεντρωτικά στατιστικά (με προαιρετικά φίλτρα ημερομηνιών)
+     * Aggregate statistics (optionally filtered by date range).
      */
     public function getStats(string|null $from = null, string|null $to = null): array
     {
         $samples = $this->samples()->with('category')->get();
 
-        // Ομαδοποίηση ανά κατηγορία
+        // Group samples by category for per-category rollups.
         $grouped = $samples->groupBy('category.id');
 
         $forecastedSamples = 0;
@@ -188,14 +178,14 @@ class Contract extends Model
 
         foreach ($grouped as $categorySamples) {
 
-            // ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΑ
+            // Forecasted totals.
             $forecastedSamples += $categorySamples->sum('net_forecasted_samples');
             $forecastedAmount  += $categorySamples->sum('net_forecasted_amount');
 
-            // ΠΡΑΓΜΑΤΟΠΟΙΗΘΕΝΤΑ ΔΕΙΓΜΑΤΑ (ίδια λογική όπως πριν)
+            // Actual samples (preserves existing calculation logic).
             $actualSamples += $categorySamples->sum(fn ($s) => $s->getActualSamples($from, $to));
 
-            // ΠΡΑΓΜΑΤΟΠΟΙΗΘΕΝΤΑ ΠΟΣΑ (ΝΕΑ ΛΟΓΙΚΗ)
+            // Actual amounts from registrations matching the date range.
             $actualAmount += \App\Models\Registration::query()
                 ->whereIn('contract_sample_id', $categorySamples->pluck('id'))
                 ->active()
@@ -211,7 +201,9 @@ class Contract extends Model
         ];
     }
 
-    // Compatibility for Filament
+    /**
+     * Compatibility accessor for Filament.
+     */
     public function getStatsAttribute(): array
     {
         return $this->getStats();
@@ -231,7 +223,7 @@ class Contract extends Model
     }
 
     /**
-     * Έλεγχος για warnings (>90%)
+     * Flag a warning when actual samples reach 90% of forecasted samples.
      */
     public function getHasWarningAttribute(): bool
     {

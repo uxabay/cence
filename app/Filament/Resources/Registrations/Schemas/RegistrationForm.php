@@ -93,8 +93,13 @@ class RegistrationForm
                                                 $year = Carbon::parse($state)->year;
                                                 $set('year', $year);
 
-                                                // Auto-suggest στο πρώτο load ΜΟΝΟ αν είναι κενό και δεν έχει γίνει manual override
-                                                if (blank($get('registration_number')) && ! $get('registration_number_manual')) {
+                                                // Σε create context (id κενό), ξαναπρότεινε πάντα next number
+                                                // εκτός αν υπάρχει manual override από τον χρήστη.
+                                                $isCreateContext = blank($get('id'));
+                                                $shouldAutoSuggest = ! $get('registration_number_manual')
+                                                    && ($isCreateContext || blank($get('registration_number')));
+
+                                                if ($shouldAutoSuggest) {
                                                     $set('registration_number_system_set', true);
                                                     $set('registration_number', Registration::nextNumberForYear($year));
                                                     $set('registration_number_system_set', false);
@@ -129,6 +134,27 @@ class RegistrationForm
                                             ->maxLength(20)
                                             ->placeholder('π.χ. 00024/2025')
                                             ->columnSpan(1)
+                                            ->suffixAction(
+                                                Action::make('fetchNextRegistrationNumber')
+                                                    ->icon('heroicon-o-arrow-path')
+                                                    ->tooltip('Εύρεση επόμενου αριθμού πρωτοκόλλου για την ημερομηνία')
+                                                    ->action(function (callable $get, callable $set) {
+                                                        $date = $get('date') ?: today();
+                                                        $year = Carbon::parse($date)->year;
+
+                                                        $set('year', $year);
+                                                        $set('registration_number_manual', false);
+                                                        $set('registration_number_system_set', true);
+                                                        $set('registration_number', Registration::nextNumberForYear($year));
+                                                        $set('registration_number_system_set', false);
+
+                                                        Notification::make()
+                                                            ->title('Ο αριθμός πρωτοκόλλου ενημερώθηκε')
+                                                            ->body("Ορίστηκε ο επόμενος διαθέσιμος αριθμός για το {$year}.")
+                                                            ->success()
+                                                            ->send();
+                                                    })
+                                            )
                                             ->live(onBlur: true) // ✅ format μόνο όταν φύγει από το πεδίο
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                                 // Αν έγινε set από σύστημα (auto-suggest), ΜΗΝ το θεωρείς manual και μην ξανα-formatάρεις

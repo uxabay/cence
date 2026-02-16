@@ -16,6 +16,7 @@ class LabCustomerImporter extends Importer
 {
     protected static ?string $model = LabCustomer::class;
     protected static ?string $modelName = 'Πελάτες';
+    protected static ?array $customerCategoryLookup = null;
 
     public static function getColumns(): array
     {
@@ -42,19 +43,7 @@ class LabCustomerImporter extends Importer
                 ->rules([
                     'required',
                     function (string $attribute, $value, $fail): void {
-                        $normalized = Str::of($value)
-                            ->lower()
-                            ->ascii()
-                            ->squish();
-
-                        $exists = CustomerCategory::query()
-                            ->get()
-                            ->first(fn ($category) =>
-                                Str::of($category->name)
-                                    ->lower()
-                                    ->ascii()
-                                    ->squish() === $normalized
-                            );
+                        $exists = self::findCustomerCategoryByName((string) $value);
 
                         if (! $exists) {
                             $fail(
@@ -67,17 +56,7 @@ class LabCustomerImporter extends Importer
                 ->relationship(
                     name: 'category',
                     resolveUsing: fn (?string $state) =>
-                        CustomerCategory::all()
-                            ->first(fn ($category) =>
-                                Str::of($category->name)
-                                    ->lower()
-                                    ->ascii()
-                                    ->squish()
-                                    === Str::of($state ?? '')
-                                        ->lower()
-                                        ->ascii()
-                                        ->squish()
-                            )
+                        self::findCustomerCategoryByName($state)
                 )
                 ->helperText('Συμπληρώστε το όνομα της κατηγορίας (π.χ. Δήμοι, Νοσοκομεία).')
                 ->example('Δήμοι'),
@@ -253,5 +232,45 @@ class LabCustomerImporter extends Importer
         }
 
         return $body;
+    }
+
+    protected static function findCustomerCategoryByName(?string $value): ?CustomerCategory
+    {
+        $normalized = self::normalizeCategoryName($value);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return self::getCustomerCategoryLookup()[$normalized] ?? null;
+    }
+
+    protected static function getCustomerCategoryLookup(): array
+    {
+        if (self::$customerCategoryLookup !== null) {
+            return self::$customerCategoryLookup;
+        }
+
+        $lookup = [];
+
+        foreach (CustomerCategory::query()->orderBy('id')->get() as $category) {
+            $normalizedName = self::normalizeCategoryName($category->name);
+
+            if ($normalizedName === '' || array_key_exists($normalizedName, $lookup)) {
+                continue;
+            }
+
+            $lookup[$normalizedName] = $category;
+        }
+
+        return self::$customerCategoryLookup = $lookup;
+    }
+
+    protected static function normalizeCategoryName(?string $value): string
+    {
+        return (string) Str::of($value ?? '')
+            ->lower()
+            ->ascii()
+            ->squish();
     }
 }

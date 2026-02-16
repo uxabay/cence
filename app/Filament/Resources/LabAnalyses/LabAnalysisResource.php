@@ -13,6 +13,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\ReplicateAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
@@ -25,6 +26,7 @@ use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,66 +48,70 @@ class LabAnalysisResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
-            ->components([
+            ->components(static::getFormComponents());
+    }
 
-                Section::make('Βασικά Στοιχεία')
-                    ->icon('heroicon-o-beaker')
-                    ->schema([
+    protected static function getFormComponents(): array
+    {
+        return [
+            Section::make('Βασικά Στοιχεία')
+                ->icon('heroicon-o-beaker')
+                ->schema([
 
-                        Select::make('lab_sample_category_id')
-                            ->relationship('labSampleCategory', 'name')
-                            ->label('Κατηγορία Δείγματος')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                    Select::make('lab_sample_category_id')
+                        ->relationship('labSampleCategory', 'name')
+                        ->label('Κατηγορία Δείγματος')
+                        ->searchable()
+                        ->preload()
+                        ->required(),
 
-                        TextInput::make('name')
-                            ->label('Όνομα Ανάλυσης')
-                            ->placeholder('π.χ. Χημική Ανάλυση pH')
-                            ->required(),
+                    TextInput::make('name')
+                        ->label('Όνομα Ανάλυσης')
+                        ->placeholder('π.χ. Χημική Ανάλυση pH')
+                        ->required(),
 
-                        Textarea::make('description')
-                            ->label('Περιγραφή')
-                            ->placeholder('Προαιρετική περιγραφή της ανάλυσης.')
-                            ->rows(2)
-                            ->columnSpanFull(),
+                    Textarea::make('description')
+                        ->label('Περιγραφή')
+                        ->placeholder('Προαιρετική περιγραφή της ανάλυσης.')
+                        ->rows(2)
+                        ->columnSpanFull(),
 
-                    ])
-                    ->columns(2)
-                    ->columnSpanFull(),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
 
 
-                Section::make('Τιμολόγηση & Κατάσταση')
-                    ->icon('heroicon-o-currency-euro')
-                    ->schema([
+            Section::make('Τιμολόγηση & Κατάσταση')
+                ->icon('heroicon-o-currency-euro')
+                ->schema([
 
-                        TextInput::make('unit_price')
-                            ->label('Τιμή (€)')
-                            ->numeric()
-                            ->default(0)
-                            ->required()
-                            ->columnSpan(1),
+                    TextInput::make('unit_price')
+                        ->label('Τιμή (€)')
+                        ->numeric()
+                        ->default(0)
+                        ->required()
+                        ->columnSpan(1),
 
-                        TextInput::make('currency_code')
-                            ->label('Νόμισμα')
-                            ->default('EUR')
-                            ->readOnly()
-                            ->columnSpan(1),
+                    TextInput::make('currency_code')
+                        ->label('Νόμισμα')
+                        ->default('EUR')
+                        ->readOnly()
+                        ->columnSpan(1),
 
-                        Select::make('status')
-                            ->label('Κατάσταση')
-                            ->options([
-                                RecordStatusEnum::Active->value => RecordStatusEnum::Active->getLabel(),
-                                RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
-                            ])
-                            ->default(RecordStatusEnum::Active->value)
-                            ->required()
-                            ->columnSpan(1),
-                    ])
-                    ->columns(3)
-                    ->columnSpanFull(),
+                    Select::make('status')
+                        ->label('Κατάσταση')
+                        ->options([
+                            RecordStatusEnum::Active->value => RecordStatusEnum::Active->getLabel(),
+                            RecordStatusEnum::Inactive->value => RecordStatusEnum::Inactive->getLabel(),
+                        ])
+                        ->default(RecordStatusEnum::Active->value)
+                        ->required()
+                        ->columnSpan(1),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
-            ]);
+        ];
     }
 
 
@@ -226,12 +232,31 @@ class LabAnalysisResource extends Resource
             ])
 
             ->filters([
+                SelectFilter::make('lab_sample_category_id')
+                    ->label('Κατηγορία Δείγματος')
+                    ->relationship('labSampleCategory', 'name')
+                    ->searchable()
+                    ->preload(),
                 TrashedFilter::make(),
             ])
 
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()->label('Προβολή')->icon('heroicon-o-eye'),
+                    ReplicateAction::make()
+                        ->label('Αντιγραφή')
+                        ->icon('heroicon-o-square-2-stack')
+                        ->schema(static::getFormComponents())
+                        ->mutateRecordDataUsing(function (array $data): array {
+                            $originalName = trim((string) ($data['name'] ?? ''));
+                            $data['name'] = $originalName === ''
+                                ? 'Αντίγραφο'
+                                : "Αντίγραφο {$originalName}";
+
+                            return $data;
+                        })
+                        ->modalHeading('Δημιουργία αντιγράφου ανάλυσης')
+                        ->modalSubmitActionLabel('Δημιουργία'),
                     EditAction::make()->label('Επεξεργασία')->icon('heroicon-o-pencil-square'),
                     DeleteAction::make(),
                     ForceDeleteAction::make(),
