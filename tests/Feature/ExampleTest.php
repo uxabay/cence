@@ -8,12 +8,22 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * A guest user is redirected from the home page.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_guest_is_redirected_from_home(): void
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect();
+    }
+
+    /**
+     * The admin panel requires authentication.
+     */
+    public function test_admin_requires_authentication(): void
+    {
+        $response = $this->get('/admin');
+
+        $response->assertRedirect();
     }
 }
