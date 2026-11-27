@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Updated CI to validate PHP changes against PHP 8.4, run the PHPUnit suite, install Filament's production CSS dependencies before building frontend assets, and handle release-tag pushes when selecting changed files for Pint.
 - Raised the minimum supported PHP version to 8.4 to match the production runtime and locked dependencies.
 - Updated Composer dependencies to address production security advisories.
+- Updated npm dependencies within their declared version ranges to resolve frontend build-tool advisories.
 - Contract budget summaries now use net forecasts after active revisions consistently across the overview and dashboard.
 - The dashboard displays a positive remaining budget or an explicit overrun amount.
 - Contract overview widgets now follow the Filament theme setting instead of the operating system color preference.
