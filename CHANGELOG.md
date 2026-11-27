@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 - Added a dedicated laboratory sample statistics page with date, customer, customer-category, sample-category, and contract-link filters.
 
 ### Changed
-- Updated CI to validate PHP changes against PHP 8.4, run the PHPUnit suite, install Filament's production CSS dependencies before building frontend assets, and handle release-tag pushes when selecting changed files for Pint.
+- Updated CI to validate PHP changes against PHP 8.4, run the PHPUnit suite, install Filament's production CSS dependencies before building frontend assets, and compare release-tag Pint checks with the previous version tag.
 - Raised the minimum supported PHP version to 8.4 to match the production runtime and locked dependencies.
 - Updated Composer dependencies to address production security advisories.
 - Updated npm dependencies within their declared version ranges to resolve frontend build-tool advisories.

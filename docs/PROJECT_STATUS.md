@@ -46,5 +46,5 @@ Filament Shield custom permission keys use snake_case to match the authorization
 - Bug fixes → `main`.
 - Releases → tags created from `main`.
 - Never deploy from a branch.
-- CI checks PHP changes with Pint, runs the PHPUnit suite on PHP 8.4 after MySQL migrations, and builds frontend assets with Node 20 after installing the PHP production dependencies that provide Filament's theme CSS. Release-tag pushes fall back to the tagged commit's parent when GitHub provides no `before` SHA.
+- CI checks PHP changes with Pint, runs the PHPUnit suite on PHP 8.4 after MySQL migrations, and builds frontend assets with Node 20 after installing the PHP production dependencies that provide Filament's theme CSS. For tag refs, Pint compares changed PHP files since the previous version tag, independent of GitHub's `before` value.
 - Composer production dependencies and npm dependencies currently report no known security advisories.
