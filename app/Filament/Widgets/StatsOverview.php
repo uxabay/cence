@@ -3,15 +3,17 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Contract;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Schema;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class StatsOverview extends StatsOverviewWidget
 {
     use HasWidgetShield;
-    
-    public function getColumns(): int | array
+
+    public function getColumns(): int|array
     {
         return [
             'md' => 2,
@@ -21,7 +23,20 @@ class StatsOverview extends StatsOverviewWidget
     }
 
     protected ?string $heading = 'Επισκόπηση Συμβάσεων';
+
     protected static ?int $sort = 10;
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema->components([
+            $this->getSectionContentComponent(),
+            Text::make('Τα πραγματοποιηθέντα δείγματα είναι τα έγκυρα δείγματα που συνδέονται με ενεργές συμβάσεις, αθροιστικά για όλες τις ημερομηνίες. Περιλαμβάνονται και δείγματα σε κατηγορίες που εξαιρούνται από τα εργαστηριακά στατιστικά.')
+                ->size('sm')
+                ->color('gray')
+                ->columnSpanFull(),
+        ]);
+    }
+
     protected function getStats(): array
     {
         // -------------------------------------------------------------
@@ -44,7 +59,7 @@ class StatsOverview extends StatsOverviewWidget
             return $c->getStats()['actual_amount'];
         });
 
-        $remainingBudget = max($forecastedAmountTotal - $actualAmountTotal, 0);
+        $budgetBalance = $forecastedAmountTotal - $actualAmountTotal;
 
         $actualSamplesTotal = $contracts->sum(function ($c) {
             return $c->getStats()['actual_samples'];
@@ -80,9 +95,12 @@ class StatsOverview extends StatsOverviewWidget
                 ->color('success'),
 
             // 4
-            Stat::make('Υπόλοιπο', number_format($remainingBudget, 2).' €')
+            Stat::make(
+                $budgetBalance < 0 ? 'Υπέρβαση' : 'Υπόλοιπο',
+                number_format(abs($budgetBalance), 2).' €'
+            )
                 ->icon('heroicon-o-wallet')
-                ->color($remainingBudget <= 0 ? 'danger' : 'gray'),
+                ->color($budgetBalance < 0 ? 'danger' : 'gray'),
 
             // 5
             Stat::make('Δείγματα (Πραγματ.)', number_format($actualSamplesTotal))

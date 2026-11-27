@@ -2,28 +2,26 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ForcePasswordReset;
 use App\Filament\Support\NavigationGroupsNames;
-use BezhanSalleh\FilamentShield\Facades\FilamentShield;
+use App\Http\Middleware\EnsurePasswordResetIsDone;
+use App\Http\Middleware\TrackUserActivity;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\FontProviders\GoogleFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Illuminate\Support\Facades\Auth;
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
-use Filament\FontProviders\GoogleFontProvider;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -50,12 +48,12 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-beaker'),
 
                 NavigationGroup::make()
-                    ->label(NavigationGroupsNames::SYSTEM->getLabel())
-                    ->icon('heroicon-o-cog'),
-
-                NavigationGroup::make()
                     ->label(NavigationGroupsNames::REPORTS->getLabel())
                     ->icon('heroicon-o-chart-bar'),
+
+                NavigationGroup::make()
+                    ->label(NavigationGroupsNames::SYSTEM->getLabel())
+                    ->icon('heroicon-o-cog'),
             ])
 
             ->spa(hasPrefetching: true)
@@ -67,8 +65,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
-                \App\Filament\Pages\Dashboard::class,
-                \App\Filament\Pages\ForcePasswordReset::class,
+                Dashboard::class,
+                ForcePasswordReset::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
@@ -76,7 +74,6 @@ class AdminPanelProvider extends PanelProvider
 
             ->favicon(asset('images/cence_fav_icon.png'))
             ->brandLogo(asset('images/cence_logo_full.png'))
-
 
             ->middleware([
                 EncryptCookies::class,
@@ -88,8 +85,8 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \App\Http\Middleware\TrackUserActivity::class,
-                \App\Http\Middleware\EnsurePasswordResetIsDone::class,
+                TrackUserActivity::class,
+                EnsurePasswordResetIsDone::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
@@ -103,17 +100,17 @@ class AdminPanelProvider extends PanelProvider
                     ->gridColumns([
                         'default' => 1,
                         'sm' => 2,
-                        'lg' => 2
+                        'lg' => 2,
                     ])
                     ->sectionColumnSpan(1)
                     ->checkboxListColumns([
                         'default' => 1,
                         'sm' => 2,
-                        'lg' => 4
+                        'lg' => 4,
                     ])
                     ->resourceCheckboxListColumns([
                         'default' => 1,
-                        'sm' => 2
+                        'sm' => 2,
                     ])
                     ->recordTitleAttribute(false)
                     ->localizePermissionLabels()
@@ -121,4 +118,3 @@ class AdminPanelProvider extends PanelProvider
             ]);
     }
 }
-

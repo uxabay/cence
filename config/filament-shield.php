@@ -1,5 +1,13 @@
 <?php
 
+use App\Filament\Pages\ContractNotificationSettingsPage;
+use App\Filament\Pages\ForcePasswordReset;
+use App\Filament\Pages\SystemInfo;
+use App\Filament\Resources\Roles\RoleResource;
+use Filament\Pages\Dashboard;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
+
 return [
 
     /*
@@ -100,7 +108,9 @@ return [
 
     'permissions' => [
         'separator' => ':',
-        'case' => 'pascal',
+        // AppServiceProvider preserves snake_case for resource/page keys; custom
+        // permissions must match the exact names checked by the application.
+        'case' => 'snake',
         'generate' => true,
     ],
 
@@ -164,7 +174,7 @@ return [
         'subject' => 'model',
         'manage' => [
             // \BezhanSalleh\FilamentShield\Resources\Roles\RoleResource::class => [
-            \App\Filament\Resources\Roles\RoleResource::class => [
+            RoleResource::class => [
                 'viewAny',
                 'view',
                 'create',
@@ -192,10 +202,10 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
-            \Filament\Pages\Dashboard::class,
-            \App\Filament\Pages\ForcePasswordReset::class,
-            \App\Filament\Pages\ContractNotificationSettingsPage::class,
-            \App\Filament\Pages\SystemInfo::class,
+            Dashboard::class,
+            ForcePasswordReset::class,
+            ContractNotificationSettingsPage::class,
+            SystemInfo::class,
         ],
     ],
 
@@ -214,8 +224,8 @@ return [
         'subject' => 'class',
         'prefix' => 'view',
         'exclude' => [
-            \Filament\Widgets\AccountWidget::class,
-            \Filament\Widgets\FilamentInfoWidget::class,
+            AccountWidget::class,
+            FilamentInfoWidget::class,
         ],
     ],
 

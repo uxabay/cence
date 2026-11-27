@@ -6,14 +6,16 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "bezhansalleh/filament-shield": "^4.0",
+        "dompdf/dompdf": "^3.0",
         "filament/filament": "^4.0",
-        "filament/spatie-laravel-settings-plugin": "*",
+        "filament/spatie-laravel-settings-plugin": "^4.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "pxlrbt/filament-activity-log": "^2.0",
         "spatie/laravel-activitylog": "^4.10",
+        "spatie/laravel-pdf": "^2.14",
         "spatie/laravel-permission": "^6.21",
         "spatie/laravel-settings": "^3.4"
     },

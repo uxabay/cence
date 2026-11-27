@@ -3,16 +3,18 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Registration;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class SampleIntakeStackedChart extends ChartWidget
 {
     use HasWidgetShield;
-    
+
     protected ?string $heading = 'Εβδομαδιαία Ροή Δειγμάτων (Τελευταίες 5 Εβδομάδες)';
+
     protected static ?int $sort = 20;
+
     protected int|string|array $columnSpan = 2;
 
     protected function getType(): string
@@ -43,6 +45,7 @@ class SampleIntakeStackedChart extends ChartWidget
         // 2. Φέρνουμε registrations των τελευταίων 5 εβδομάδων
         // ---------------------------------------------------------
         $regs = Registration::active()
+            ->countsTowardLabTotals()
             ->whereDate('date', '>=', $startDate->toDateString())
             ->whereDate('date', '<=', $now->toDateString())
             ->select(['id', 'date', 'contract_id', 'total_samples'])
@@ -54,7 +57,7 @@ class SampleIntakeStackedChart extends ChartWidget
         foreach ($regs as $reg) {
             $weekKey = $reg->date->format('o-W');
 
-            if (!isset($withContract[$weekKey])) {
+            if (! isset($withContract[$weekKey])) {
                 // Το κάνουμε skip αν για κάποιο λόγο είναι εκτός εύρους
                 continue;
             }
@@ -71,6 +74,7 @@ class SampleIntakeStackedChart extends ChartWidget
         // ---------------------------------------------------------
         $labels = array_map(function ($key) {
             [$year, $week] = explode('-', $key);
+
             return "Εβδ. {$week}/{$year}";
         }, $weekKeys);
 

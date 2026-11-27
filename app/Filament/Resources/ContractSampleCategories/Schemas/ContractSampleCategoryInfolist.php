@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\ContractSampleCategories\Schemas;
 
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 
 class ContractSampleCategoryInfolist
@@ -39,6 +39,12 @@ class ContractSampleCategoryInfolist
                                     ->badge()
                                     ->color(fn ($state) => $state?->getColor())
                                     ->icon(fn ($state) => $state?->getIcon()),
+
+                                TextEntry::make('exclude_from_lab_totals')
+                                    ->label('Εργαστηριακή καταμέτρηση')
+                                    ->formatStateUsing(fn ($state) => $state ? 'Εξαιρείται' : 'Συμμετέχει')
+                                    ->badge()
+                                    ->color(fn ($state) => $state ? 'warning' : 'success'),
                             ]),
 
                         // Row 2: Description (Full width)

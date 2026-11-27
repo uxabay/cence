@@ -2,40 +2,36 @@
 
 namespace App\Filament\Resources\Registrations\Schemas;
 
+use App\Enums\CostCalculationTypeEnum;
 use App\Enums\RecordStatusEnum;
+use App\Models\Contract;
 use App\Models\ContractSample;
+use App\Models\LabAnalysis;
+use App\Models\LabAnalysisPackage;
 use App\Models\Registration;
 use App\Models\RegistrationAnalysis;
-use App\Models\Contract;
-use Illuminate\Support\HtmlString;
-use Filament\Actions;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\Action;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Flex;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Repeater\TableColumn;
-use Filament\Support\Enums\Alignment;
-use App\Enums\CostCalculationTypeEnum;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Flex;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Carbon;
-use Filament\Notifications\Notification;
-
+use Illuminate\Support\HtmlString;
 
 class RegistrationForm
 {
     /**
      * Ορίζει το σχήμα της φόρμας για το Πρωτόκολλο Καταχώρησης με 2/1 διάταξη.
      * Επιστρέφει ένα αντικείμενο Schema.
-     *
-     * @return \Filament\Schemas\Schema
      */
     public static function configure(Schema $schema): Schema
     {
@@ -105,7 +101,7 @@ class RegistrationForm
                                                     $set('registration_number_system_set', false);
                                                 }
                                             })
-                                            ->afterStateUpdated(function ($state, callable $get, callable $set)  {
+                                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                                 if (! filled($state)) {
                                                     return;
                                                 }
@@ -213,7 +209,6 @@ class RegistrationForm
                                             ->columnSpan(2), // ➡️ ΑΛΛΑΓΗ 1: Καταλαμβάνει 2 στήλες
                                     ]),
 
-
                                 /*
                                 |--------------------------------------------------------------------------
                                 | ΔΕΙΓΜΑΤΑ ΕΡΓΑΣΤΗΡΙΟΥ (S2)
@@ -282,7 +277,6 @@ class RegistrationForm
                                             ->extraAttributes(['class' => 'bg-gray-50 text-gray-700']),
                                     ]),
 
-
                                 /*
                                 |--------------------------------------------------------------------------
                                 | ΑΝΑΛΥΣΕΙΣ (S4) - ΜΕΓΑΛΥΤΕΡΟ SECTION
@@ -310,11 +304,10 @@ class RegistrationForm
                                                     return $sample?->cost_calculation_type === CostCalculationTypeEnum::VARIABLE_COUNT;
                                                 })
 
-                                                ->options(fn ($get) =>
-                                                    \App\Models\LabAnalysisPackage::query()
-                                                        ->where('lab_sample_category_id', $get('lab_sample_category_id'))
-                                                        ->active()
-                                                        ->pluck('name', 'id')
+                                                ->options(fn ($get) => LabAnalysisPackage::query()
+                                                    ->where('lab_sample_category_id', $get('lab_sample_category_id'))
+                                                    ->active()
+                                                    ->pluck('name', 'id')
                                                 )
                                                 ->searchable()
                                                 ->placeholder('Επιλογή πακέτου…')
@@ -328,10 +321,14 @@ class RegistrationForm
                                                 ->action(function (array $data, callable $get, callable $set) {
 
                                                     $packageId = $get('analysis_package_id');
-                                                    if (! $packageId) return;
+                                                    if (! $packageId) {
+                                                        return;
+                                                    }
 
-                                                    $package = \App\Models\LabAnalysisPackage::with('analyses')->find($packageId);
-                                                    if (! $package) return;
+                                                    $package = LabAnalysisPackage::with('analyses')->find($packageId);
+                                                    if (! $package) {
+                                                        return;
+                                                    }
 
                                                     // Αν είμαστε σε edit existing registration, το id συνήθως υπάρχει στο state
                                                     $registrationId = $get('id'); // αν δεν παίζει στο δικό σου context, θα το πιάσουμε στο Save (Fix B)
@@ -343,8 +340,8 @@ class RegistrationForm
                                                     $newRows = $package->analyses->map(function ($a) use ($registrationId) {
                                                         $row = [
                                                             'lab_analysis_id' => $a->id,
-                                                            'analysis_name'   => $a->pivot->analysis_name,
-                                                            'analysis_price'  => $a->pivot->analysis_price,
+                                                            'analysis_name' => $a->pivot->analysis_name,
+                                                            'analysis_price' => $a->pivot->analysis_price,
                                                         ];
 
                                                         // DB-aware: αν υπάρχει trashed row, βάλε το id για να γίνει update αντί για create
@@ -368,8 +365,8 @@ class RegistrationForm
                                                     $set('analyses', $merged);
                                                 }),
                                         ])
-                                        ->verticallyAlignEnd()
-                                        ->columnSpanFull(),  // Flex takes full width of its parent (2/3)
+                                            ->verticallyAlignEnd()
+                                            ->columnSpanFull(),  // Flex takes full width of its parent (2/3)
 
                                         // -----------------------------
                                         // Repeater για τις αναλύσεις
@@ -400,16 +397,15 @@ class RegistrationForm
 
                                                 Select::make('lab_analysis_id')
                                                     ->label('Ανάλυση')
-                                                    ->options(fn ($get) =>
-                                                        \App\Models\LabAnalysis::query()
-                                                            ->where('lab_sample_category_id', $get('../../lab_sample_category_id'))
-                                                            ->active()
-                                                            ->pluck('name', 'id')
+                                                    ->options(fn ($get) => LabAnalysis::query()
+                                                        ->where('lab_sample_category_id', $get('../../lab_sample_category_id'))
+                                                        ->active()
+                                                        ->pluck('name', 'id')
                                                     )
                                                     ->reactive()
                                                     ->afterStateUpdated(function ($state, callable $set) {
                                                         if ($state) {
-                                                            $a = \App\Models\LabAnalysis::find($state);
+                                                            $a = LabAnalysis::find($state);
                                                             if ($a) {
                                                                 $set('analysis_name', $a->name);
                                                                 $set('analysis_price', $a->unit_price);
@@ -419,7 +415,6 @@ class RegistrationForm
                                                     ->searchable()
                                                     ->required()
                                                     ->native(false),
-
 
                                                 TextInput::make('analysis_name')
                                                     ->label('Ονομασία Ανάλυσης')
@@ -460,13 +455,13 @@ class RegistrationForm
                                     ->hidden(function (callable $get) {
                                         $sampleId = $get('contract_sample_id');
 
-                                        if (!$sampleId) {
+                                        if (! $sampleId) {
                                             return true;
                                         }
 
-                                        $sample = \App\Models\ContractSample::find($sampleId);
+                                        $sample = ContractSample::find($sampleId);
 
-                                        if (!$sample) {
+                                        if (! $sample) {
                                             return true;
                                         }
 
@@ -479,7 +474,6 @@ class RegistrationForm
                                             true
                                         );
                                     }),
-
 
                                 // ➡️ ΑΛΛΑΓΗ 2: Το Section S5 (Κατάσταση & Παρατηρήσεις) μεταφέρθηκε εδώ
                                 /*
@@ -531,6 +525,19 @@ class RegistrationForm
                                             ->searchable()
                                             ->preload()
                                             ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                                $contractSampleId = $get('contract_sample_id');
+
+                                                if (! $contractSampleId) {
+                                                    return;
+                                                }
+
+                                                $contractSample = ContractSample::query()->find($contractSampleId);
+
+                                                if (! $contractSample || (int) $contractSample->contract_id !== (int) $state) {
+                                                    $set('contract_sample_id', null);
+                                                }
+                                            })
                                             ->default(null)
                                             ->placeholder('Προαιρετική επιλογή...'),
 
@@ -540,11 +547,11 @@ class RegistrationForm
                                             ->reactive()
                                             ->options(function (callable $get) {
                                                 $contractId = $get('contract_id');
-                                                if (!$contractId) {
+                                                if (! $contractId) {
                                                     return [];
                                                 }
 
-                                                return \App\Models\ContractSample::query()
+                                                return ContractSample::query()
                                                     ->where('contract_id', $contractId)
                                                     ->where('is_master', true)
                                                     ->with('category')
@@ -555,20 +562,24 @@ class RegistrationForm
                                                     ])
                                                     ->toArray();
                                             })
-                                            ->disabled(fn (callable $get) => !$get('contract_id'))
+                                            ->disabled(fn (callable $get) => ! $get('contract_id'))
                                             ->required(fn (callable $get) => filled($get('contract_id')))
                                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                if (!$state) return;
+                                                if (! $state) {
+                                                    return;
+                                                }
 
                                                 $labCat = $get('lab_sample_category_id');
-                                                if (!$labCat) return;
+                                                if (! $labCat) {
+                                                    return;
+                                                }
 
-                                                $sample = \App\Models\ContractSample::with('labCategories')->find($state);
+                                                $sample = ContractSample::with('labCategories')->find($state);
                                                 $compatible = $sample?->labCategories?->pluck('id')?->contains($labCat);
 
-                                                if (!$compatible) {
+                                                if (! $compatible) {
                                                     $set('contract_sample_id', null);
-                                                    \Filament\Notifications\Notification::make()
+                                                    Notification::make()
                                                         ->title('Μη συμβατή επιλογή')
                                                         ->body('Η επιλεγμένη κατηγορία δειγμάτων σύμβασης δεν περιλαμβάνει την κατηγορία δειγμάτων του εργαστηρίου.')
                                                         ->danger()
@@ -583,7 +594,6 @@ class RegistrationForm
                                             ->placeholder('Επιλέξτε κατηγορία δειγμάτων σύμβασης...')
                                             ->helperText('Εμφανίζονται μόνο οι master κατηγορίες της σύμβασης'),
 
-
                                         // 🟧 Info box – Πληροφορίες για τη σύμβαση του πελάτη
                                         // Χρησιμοποιεί το customer_id που βρίσκεται πλέον στο S1
                                         TextEntry::make('customer_contract_info')
@@ -594,7 +604,7 @@ class RegistrationForm
                                             ->default(function (callable $get): HtmlString {
                                                 $customerId = $get('customer_id');
 
-                                                if (!$customerId) {
+                                                if (! $customerId) {
                                                     return new HtmlString('<em>Δεν έχει επιλεγεί πελάτης.</em>');
                                                 }
 
@@ -603,7 +613,7 @@ class RegistrationForm
                                                     ->orderByDesc('date_start')
                                                     ->first();
 
-                                                if (!$contract) {
+                                                if (! $contract) {
                                                     return new HtmlString('<span class="text-red-700">Ο πελάτης δεν έχει ενεργή σύμβαση.</span>');
                                                 }
 

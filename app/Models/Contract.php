@@ -3,18 +3,19 @@
 namespace App\Models;
 
 use App\Enums\RecordStatusEnum;
+use App\Services\Contracts\ContractNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Auth;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Contract extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $table = 'contracts';
 
@@ -137,7 +138,7 @@ class Contract extends Model
      */
     public function refreshAndCheckNotifications(): void
     {
-        app(\App\Services\Contracts\ContractNotificationService::class)
+        app(ContractNotificationService::class)
             ->evaluateContract($this);
     }
 
@@ -158,13 +159,13 @@ class Contract extends Model
      */
     public function getForecastedAmountAttribute(): float
     {
-        return $this->samples()->sum('forecasted_amount');
+        return (float) $this->samples()->get()->sum('net_forecasted_amount');
     }
 
     /**
      * Aggregate statistics (optionally filtered by date range).
      */
-    public function getStats(string|null $from = null, string|null $to = null): array
+    public function getStats(?string $from = null, ?string $to = null): array
     {
         $samples = $this->samples()->with('category')->get();
 
@@ -180,13 +181,13 @@ class Contract extends Model
 
             // Forecasted totals.
             $forecastedSamples += $categorySamples->sum('net_forecasted_samples');
-            $forecastedAmount  += $categorySamples->sum('net_forecasted_amount');
+            $forecastedAmount += $categorySamples->sum('net_forecasted_amount');
 
             // Actual samples (preserves existing calculation logic).
             $actualSamples += $categorySamples->sum(fn ($s) => $s->getActualSamples($from, $to));
 
             // Actual amounts from registrations matching the date range.
-            $actualAmount += \App\Models\Registration::query()
+            $actualAmount += Registration::query()
                 ->whereIn('contract_sample_id', $categorySamples->pluck('id'))
                 ->active()
                 ->betweenDates($from, $to)
@@ -195,9 +196,9 @@ class Contract extends Model
 
         return [
             'forecasted_samples' => $forecastedSamples,
-            'forecasted_amount'  => $forecastedAmount,
-            'actual_samples'     => $actualSamples,
-            'actual_amount'      => $actualAmount,
+            'forecasted_amount' => $forecastedAmount,
+            'actual_samples' => $actualSamples,
+            'actual_amount' => $actualAmount,
         ];
     }
 
@@ -212,6 +213,7 @@ class Contract extends Model
     public function getProgressPercentage(?string $from = null, ?string $to = null): float
     {
         $stats = $this->getStats($from, $to);
+
         return $stats['forecasted_amount'] > 0
             ? round(($stats['actual_amount'] / $stats['forecasted_amount']) * 100, 1)
             : 0.0;
@@ -233,6 +235,7 @@ class Contract extends Model
         }
 
         $ratio = $stats['actual_samples'] / $stats['forecasted_samples'];
+
         return $ratio >= 0.9;
     }
 }

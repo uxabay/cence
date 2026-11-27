@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-use App\Enums\RecordStatusEnum;
 use App\Enums\CostCalculationTypeEnum;
-use App\Models\LabAnalysis;
+use App\Enums\RecordStatusEnum;
+use App\Services\Contracts\ContractNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Auth;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property int|null $analyses_count
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Registration extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $table = 'registrations';
 
@@ -96,7 +96,7 @@ class Registration extends Model
         });
 
         static::saved(function ($registration) {
-            app(\App\Services\Contracts\ContractNotificationService::class)
+            app(ContractNotificationService::class)
                 ->evaluateRegistration($registration);
         });
 
@@ -155,7 +155,6 @@ class Registration extends Model
         return $this->hasMany(RegistrationAnalysis::class, 'registration_id');
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -164,6 +163,21 @@ class Registration extends Model
     public function scopeActive($query)
     {
         return $query->where('status', RecordStatusEnum::Active);
+    }
+
+    /**
+     * Keep contract-category protocol lines out of laboratory-wide aggregates
+     * when their contract sample category is marked as an additional assay.
+     */
+    public function scopeCountsTowardLabTotals($query)
+    {
+        return $query->whereNotExists(function ($excludedLines) {
+            $excludedLines->selectRaw('1')
+                ->from('contract_samples')
+                ->join('contract_sample_categories', 'contract_sample_categories.id', '=', 'contract_samples.contract_sample_category_id')
+                ->whereColumn('contract_samples.id', 'registrations.contract_sample_id')
+                ->where('contract_sample_categories.exclude_from_lab_totals', true);
+        });
     }
 
     public function scopeInactive($query)
@@ -208,6 +222,7 @@ class Registration extends Model
     {
         $num = $this->registration_number ?? '—';
         $date = $this->date?->format('d/m/Y') ?? '-';
+
         return "Πρωτόκολλο {$num} ({$date})";
     }
 
@@ -220,7 +235,8 @@ class Registration extends Model
     {
         if ($this->unit_price_snapshot) {
             $amount = $this->total_samples * $this->unit_price_snapshot;
-            return number_format($amount, 2) . ' €';
+
+            return number_format($amount, 2).' €';
         }
 
         return '-';
@@ -236,6 +252,7 @@ class Registration extends Model
         if (! $this->contractSample) {
             $this->calculated_unit_price = null;
             $this->calculated_total = null;
+
             return;
         }
 
@@ -252,9 +269,10 @@ class Registration extends Model
         |--------------------------------------------------------------------------
         | Πάντα fix τιμή ανά δείγμα
         */
-        if ($type === \App\Enums\CostCalculationTypeEnum::FIX) {
+        if ($type === CostCalculationTypeEnum::FIX) {
             $this->calculated_unit_price = $fixPrice;
             $this->calculated_total = $fixPrice * $this->total_samples;
+
             return;
         }
 
@@ -266,7 +284,7 @@ class Registration extends Model
         | Κάθε ανάλυση τιμολογείται με fix τιμή ανάλυσης (snapshot).
         | Αν ξεπεραστεί το όριο → fallback σε FIX.
         */
-        if ($type === \App\Enums\CostCalculationTypeEnum::VARIABLE_COUNT) {
+        if ($type === CostCalculationTypeEnum::VARIABLE_COUNT) {
 
             $analysesCount = (int) ($this->analyses_count ?? 0);
             $analysisUnitPrice = (float) ($this->analysis_unit_price_snapshot ?? 0);
@@ -278,6 +296,7 @@ class Registration extends Model
             ) {
                 $this->calculated_unit_price = $fixPrice;
                 $this->calculated_total = $fixPrice * $this->total_samples;
+
                 return;
             }
 
@@ -286,6 +305,7 @@ class Registration extends Model
 
             $this->calculated_unit_price = $unitPrice;
             $this->calculated_total = $unitPrice * $this->total_samples;
+
             return;
         }
 
@@ -311,6 +331,7 @@ class Registration extends Model
         ) {
             $this->calculated_unit_price = $fixPrice;
             $this->calculated_total = $fixPrice * $this->total_samples;
+
             return;
         }
 
@@ -323,16 +344,16 @@ class Registration extends Model
     {
         $customerId = $this->customer_id;
 
-        if (!$customerId) {
+        if (! $customerId) {
             return '<em>Δεν έχει επιλεγεί πελάτης.</em>';
         }
 
-        $contract = \App\Models\Contract::where('lab_customer_id', $customerId)
-            ->where('status', \App\Enums\RecordStatusEnum::Active)
+        $contract = Contract::where('lab_customer_id', $customerId)
+            ->where('status', RecordStatusEnum::Active)
             ->orderByDesc('date_start')
             ->first();
 
-        if (!$contract) {
+        if (! $contract) {
             return '<span class="text-red-700">Ο πελάτης δεν έχει ενεργή σύμβαση.</span>';
         }
 
@@ -370,5 +391,4 @@ class Registration extends Model
     {
         return true;
     }
-
 }

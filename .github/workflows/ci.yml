@@ -19,9 +19,11 @@ jobs:
           --health-retries=5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: mbstring, intl, pdo_mysql, gd, bcmath, zip, pcntl
           coverage: none
       - name: Cache Composer
@@ -30,12 +32,36 @@ jobs:
           path: vendor
           key: composer-${{ hashFiles('**/composer.lock') }}
       - run: composer install --no-interaction --prefer-dist
-      - run: cp .env.example .env || true
-      - run: php artisan key:generate || true
-      - run: php artisan migrate --force || true
-      - name: Pint
-        run: ./vendor/bin/pint -v || true
-      - name: PHPStan
-        run: ./vendor/bin/phpstan analyse --no-progress || true
-      - name: Pest
-        run: ./vendor/bin/pest || true
+      - run: cp .env.example .env
+      - run: php artisan key:generate
+      - name: Run MySQL migrations
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: root
+          DB_PASSWORD: root
+      - name: Pint changed PHP files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.php')"
+          if [ -n "$changed_files" ]; then
+            printf '%s\n' "$changed_files" | xargs -r ./vendor/bin/pint --test
+          fi
+      - name: PHPUnit
+        run: php artisan test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build

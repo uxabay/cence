@@ -2,16 +2,16 @@
 
 namespace App\Filament\Resources\ContractSampleCategories\Tables;
 
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\ActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -42,6 +42,13 @@ class ContractSampleCategoriesTable
                     ->badge()
                     ->color(fn ($state) => $state?->getColor())
                     ->icon(fn ($state) => $state?->getIcon())
+                    ->sortable(),
+
+                TextColumn::make('exclude_from_lab_totals')
+                    ->label('Εργαστηριακά σύνολα')
+                    ->formatStateUsing(fn ($state) => $state ? 'Εξαιρείται' : 'Μετράται')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'warning' : 'success')
                     ->sortable(),
 
                 TextColumn::make('updated_at')

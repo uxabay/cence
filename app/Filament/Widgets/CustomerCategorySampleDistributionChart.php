@@ -2,18 +2,19 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\CustomerCategory;
 use App\Models\Registration;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 
 class CustomerCategorySampleDistributionChart extends ChartWidget
 {
     use HasWidgetShield;
-    
+
     protected ?string $heading = 'Δείγματα ανά Κατηγορία Πελάτη (Τελευταίες 5 Εβδομάδες)';
+
     protected static ?int $sort = 30;
+
     protected int|string|array $columnSpan = 2;
 
     protected function getType(): string
@@ -33,6 +34,7 @@ class CustomerCategorySampleDistributionChart extends ChartWidget
         // 2. Φέρνουμε registrations με πελάτη & κατηγορία
         // ---------------------------------------------------------
         $regs = Registration::active()
+            ->countsTowardLabTotals()
             ->whereDate('date', '>=', $startDate->toDateString())
             ->whereDate('date', '<=', $now->toDateString())
             ->whereNotNull('customer_id')
@@ -48,7 +50,7 @@ class CustomerCategorySampleDistributionChart extends ChartWidget
         foreach ($regs as $reg) {
             $categoryName = $reg->customer->category->name ?? 'Άγνωστη κατηγορία';
 
-            if (!isset($categoryTotals[$categoryName])) {
+            if (! isset($categoryTotals[$categoryName])) {
                 $categoryTotals[$categoryName] = 0;
             }
 

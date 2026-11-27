@@ -6,13 +6,13 @@ use App\Enums\RecordStatusEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ContractSampleCategory extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, LogsActivity, SoftDeletes;
 
     protected $table = 'contract_sample_categories';
 
@@ -20,6 +20,7 @@ class ContractSampleCategory extends Model
         'code',
         'name',
         'description',
+        'exclude_from_lab_totals',
         'status',
         'created_by',
         'updated_by',
@@ -27,6 +28,7 @@ class ContractSampleCategory extends Model
 
     protected $casts = [
         'status' => RecordStatusEnum::class,
+        'exclude_from_lab_totals' => 'boolean',
     ];
 
     /*
