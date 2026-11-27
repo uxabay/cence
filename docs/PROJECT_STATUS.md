@@ -46,3 +46,4 @@ Filament Shield custom permission keys use snake_case to match the authorization
 - Bug fixes → `main`.
 - Releases → tags created from `main`.
 - Never deploy from a branch.
+- CI checks PHP changes with Pint, runs the PHPUnit suite on PHP 8.4 after MySQL migrations, and builds frontend assets with Node 20. Release-tag pushes fall back to the tagged commit's parent when GitHub provides no `before` SHA.
