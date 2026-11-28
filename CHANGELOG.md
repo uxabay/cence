@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Replaced the Laravel starter README with Cence-specific application and development information.
+- Added a repository, versioning, release, and production deployment workflow.
+- Updated project status to record the deployed v1.3.0 release and PHP runtime.
+
+---
+
+## [1.3.0] - 2026-11-27
+
 ### Added
 - Added server-generated contract overview PDFs using Spatie Laravel PDF with the DOMPDF driver.
 - Added an opt-in contract sample category flag to exclude linked protocol lines from laboratory-wide dashboard totals while keeping them in contract calculations.
@@ -37,4 +46,4 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## [1.2.0] - 2026-02-16
-- Production release currently deployed on the server.
+- Previous production release; superseded by `v1.3.0`.

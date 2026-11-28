@@ -2,10 +2,10 @@
 
 ## Release status
 
-- Production release: `v1.2.0` (`592a8df8cde10f37b2b3eaf47a0849bb0e4bc394`).
-- Development branch: `develop`.
-- Production runs Laravel 12 and Filament 4. The upcoming `v1.3.0` work is being prepared on `develop` and has not yet been committed or tagged.
-- The production server now runs PHP `8.4.28`; PHP `8.2-FPM` remains installed and active temporarily for rollback. Nginx routes the application to `php8.4-fpm.sock`.
+- Production release: `v1.3.0` (`85a2b5005ef066d20a05d0e8da2ac9a3c6dcbfd8`), deployed on 2026-11-27.
+- `main` and `develop` are synchronized at the release commit; the production checkout is detached at tag `v1.3.0`.
+- Production `APP_VERSION` is `1.3.0`; the release returned HTTP 200 after deployment and the user confirmed the application works normally.
+- The production server runs PHP `8.4.28`; PHP `8.2-FPM` is disabled and retained as an installed rollback option. Nginx routes the application to `php8.4-fpm.sock`.
 
 ## Application purpose
 
@@ -23,7 +23,7 @@ The dedicated “Στατιστικά Δειγμάτων” page presents labora
 
 The main dashboard's completed-sample metric is a separate contract-progress figure: valid samples linked to active contracts, across all dates, including contract categories excluded from laboratory-wide totals. Its definition appears in a footnote below the dashboard cards. The statistics page is date-filtered and excludes those flagged categories from laboratory-wide totals. Its contract split treats a registration as contract-linked when either its contract or its contract-sample category is set. The registration form clears a category link when the selected contract changes and the category belongs to a different contract.
 
-Filament Shield custom permission keys use snake_case to match the authorization checks in the application. The permission migration copies assignments from legacy PascalCase custom permissions to the canonical snake_case permissions, without deleting the legacy rows. It also copies any grants of the old shared `view_dashboard` permission to `view_sample_statistics`. Before production deployment, back up the MySQL database and run the normal Laravel migration step. The permission grant-copy operations run in a database transaction and clear Spatie's permission cache after completion; the separate schema migration adds the category flag with a false default.
+Filament Shield custom permission keys use snake_case to match the authorization checks in the application. The permission migration copies assignments from legacy PascalCase custom permissions to the canonical snake_case permissions, without deleting the legacy rows. It also copies any grants of the old shared `view_dashboard` permission to `view_sample_statistics`. Both v1.3.0 migrations ran successfully in production after the database backup. The permission grant-copy operations run in a database transaction and clear Spatie's permission cache after completion; the separate schema migration adds the category flag with a false default, so existing categories remain included. See the [deployment guide](GIT_WORKFLOW.md#production-deployment) for future release steps.
 
 ## Local review environment
 
@@ -32,19 +32,16 @@ Filament Shield custom permission keys use snake_case to match the authorization
 - The original local `cence` database remains separate and unchanged.
 - The review database preserves contract relationships, sample counts, dates, and amounts while replacing customer, user, and protocol identifiers.
 
-## Production runtime (reported by System Info)
+## Production runtime and release dependencies
 
 - Environment: `production`.
-- PHP: `8.4.28` (verified after the runtime upgrade on 2026-11-27).
-- Laravel: `12.39.0`.
+- PHP: `8.4.28` (confirmed by the server System Info after the PHP runtime upgrade).
+- Laravel framework: `12.74.0`; Filament: `4.17.0` (locked in v1.3.0 and installed during deployment).
 - Database: MySQL.
 - Timezone: `Europe/Athens`.
 
 ## Git and release workflow
 
-- Features → `develop`.
-- Bug fixes → `main`.
-- Releases → tags created from `main`.
-- Never deploy from a branch.
-- CI checks PHP changes with Pint, runs the PHPUnit suite on PHP 8.4 after MySQL migrations, and builds frontend assets with Node 20 after installing the PHP production dependencies that provide Filament's theme CSS. For tag refs, Pint compares changed PHP files since the previous version tag, independent of GitHub's `before` value.
-- Composer production dependencies and npm dependencies currently report no known security advisories.
+See [Git, versioning, release, and deployment workflow](GIT_WORKFLOW.md). Production deploys a verified tag, never a branch.
+
+The CI runs for `main`, `develop`, and tag `v1.3.0` passed. The release used Composer production dependencies and npm dependencies with no known security advisories at the time of release.

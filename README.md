@@ -1,61 +1,84 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Cence
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Cence is an intranet application for tracking laboratory sample protocols and the progress of contracts used to process those samples. It is built with Laravel and Filament and is operated in Greek.
 
-## About Laravel
+## How the application works
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The protocol (`registrations`) is the source of truth for sample activity. A registration may be linked to a contract and a contract sample category, but it may also be unlinked from a contract.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+A laboratory sample can contribute to more than one contract category. In that case, it is represented by separate protocol entries, so the same protocol number may appear on more than one row. Contract totals and sample counts are calculated from those protocol entries and their contract links.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Contract sample categories have an **Exclude from laboratory totals** flag. When enabled, linked protocol entries continue to count toward that contract's progress and costs, but are omitted from laboratory-wide sample statistics. The flag defaults to `false`; existing categories remain included unless someone changes them.
 
-## Learning Laravel
+## Main areas
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Contracts:** contract details, forecast and actual progress, balances or overruns, and a printable PDF overview.
+- **Laboratory:** customers, laboratory sample categories, and the protocol records used for contract and sample calculations.
+- **Reports:** sample statistics by date, customer, customer category, laboratory sample category, and contract association. The page reports sample counts, not financial totals.
+- **System:** users, roles, permissions, and system information.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Statistics are available independently of protocol-management permissions. The sample-statistics page uses the dedicated `view_sample_statistics` permission.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Production release
 
-## Laravel Sponsors
+- Release: `v1.3.0`
+- Release commit: `85a2b5005ef066d20a05d0e8da2ac9a3c6dcbfd8`
+- Production PHP: `8.4.28`; PHP 8.2-FPM is disabled.
+- Locked application framework: Laravel `12.74.0`; Filament `4.17.0`.
+- Production database: MySQL-compatible database; application timezone: `Europe/Athens`.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+The server deploys an exact Git tag in detached-HEAD state. See [the Git and release workflow](docs/GIT_WORKFLOW.md) for branching, release, backup, deployment, and rollback procedures.
 
-### Premium Partners
+## Requirements
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- PHP `8.4` or later, with the extensions required by `composer.json` and the selected database driver.
+- Composer 2.
+- Node.js 20 and npm for frontend development and production asset builds.
+- MySQL/MariaDB for a production-like environment. The Laravel example environment can also be configured for SQLite where supported by the migrations.
 
-## Contributing
+The Filament Vite theme imports CSS from Composer-installed packages. Run `composer install` before `npm run build`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Local development
 
-## Code of Conduct
+1. Clone the repository and enter the project directory.
+2. Create a local environment file and application key:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+   ```bash
+   cp .env.example .env
+   composer install
+   php artisan key:generate
+   ```
 
-## Security Vulnerabilities
+3. Configure the local database and application URL in `.env`, then create the schema:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+   ```bash
+   php artisan migrate
+   ```
 
-## License
+4. Install and build frontend assets, then start the development services:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+   ```bash
+   npm ci
+   npm run build
+   composer run dev
+   ```
+
+Never copy the production `.env`, `APP_KEY`, certificates, or production database into a development checkout. Keep local review data separate from production data.
+
+## Checks
+
+```bash
+composer validate --no-check-publish
+composer test
+composer audit --locked --no-dev
+npm audit
+npm run build
+```
+
+The GitHub Actions workflow also runs migrations against MySQL, checks changed PHP files with Pint on PHP 8.4, runs PHPUnit, and builds the frontend with Node 20.
+
+## Documentation
+
+- [Git, versioning, release, and deployment workflow](docs/GIT_WORKFLOW.md)
+- [Current project and production status](docs/PROJECT_STATUS.md)
+- [Release history](CHANGELOG.md)
